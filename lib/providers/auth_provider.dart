@@ -340,6 +340,50 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<AuthResult> updateProfile({String? name, String? photoUrl}) async {
+    if (_user == null) return _fail('User not logged in');
+
+    _setLoading(true);
+    try {
+      final updates = <String, dynamic>{};
+      if (name != null) updates['name'] = name;
+      if (photoUrl != null) updates['avatar_url'] = photoUrl;
+
+      await _supabase.auth.updateUser(
+        UserAttributes(data: updates),
+      );
+
+      _user = _supabase.auth.currentUser;
+      notifyListeners();
+      return const AuthResult(success: true);
+    } on AuthException catch (e) {
+      return _fail(e.message);
+    } catch (e) {
+      return _fail('Gagal memperbarui profil: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<AuthResult> changePassword(String newPassword) async {
+    if (_user == null) return _fail('User not logged in');
+    if (newPassword.length < 6) return _fail('Password minimal 6 karakter.');
+
+    _setLoading(true);
+    try {
+      await _supabase.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+      return const AuthResult(success: true);
+    } on AuthException catch (e) {
+      return _fail(e.message);
+    } catch (e) {
+      return _fail('Gagal mengubah password: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   Future<void> resetAuth() async {
     final currentUserId = _user?.id;
     if (currentUserId != null) {

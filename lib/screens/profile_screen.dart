@@ -1,11 +1,63 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/theme_provider.dart';
+import '../utils/export_service.dart';
+import 'edit_profile_screen.dart';
+import 'security_privacy_screen.dart';
+import 'manage_cards_screen.dart';
+import 'notifications_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  void _showThemeDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final themeProvider = context.watch<ThemeProvider>();
+        return AlertDialog(
+          title: const Text('Pilih Tema'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<AppTheme>(
+                title: const Text('Default (Blue)'),
+                value: AppTheme.defaultTheme,
+                groupValue: themeProvider.currentTheme,
+                onChanged: (v) {
+                  themeProvider.setTheme(v!);
+                  Navigator.pop(context);
+                },
+              ),
+              RadioListTile<AppTheme>(
+                title: const Text('Pink Blossom'),
+                value: AppTheme.pinkBlossom,
+                groupValue: themeProvider.currentTheme,
+                onChanged: (v) {
+                  themeProvider.setTheme(v!);
+                  Navigator.pop(context);
+                },
+              ),
+              RadioListTile<AppTheme>(
+                title: const Text('Dark Mode'),
+                value: AppTheme.darkMode,
+                groupValue: themeProvider.currentTheme,
+                onChanged: (v) {
+                  themeProvider.setTheme(v!);
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,58 +75,92 @@ class ProfileScreen extends StatelessWidget {
     final menuSections = [
       _MenuSection(
         title: 'Akun',
-        items: const [
+        items: [
           _MenuItem(
             Icons.person_outline_rounded,
             'Edit Profil',
             'Ubah nama & foto profil',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+            ),
           ),
           _MenuItem(
             Icons.credit_card_rounded,
             'Kelola Rekening',
             'Tambah atau edit rekening',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ManageCardsScreen()),
+            ),
           ),
         ],
       ),
       _MenuSection(
         title: 'Preferensi',
-        items: const [
+        items: [
           _MenuItem(
             Icons.notifications_none_rounded,
             'Notifikasi',
             'Atur pengingat & notifikasi',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+            ),
           ),
           _MenuItem(
-            Icons.dark_mode_outlined,
-            'Tema Gelap',
-            'Aktifkan mode gelap',
+            Icons.palette_outlined,
+            'Tema Aplikasi',
+            'Pilih tema warna favorit',
+            onTap: () => _showThemeDialog(context),
           ),
           _MenuItem(
             Icons.download_rounded,
             'Ekspor Data',
             'Unduh riwayat transaksi',
+            onTap: () async {
+              final txProvider = context.read<TransactionProvider>();
+              await ExportService.exportTransactionsToPdf(txProvider.transactions);
+            },
           ),
         ],
       ),
       _MenuSection(
         title: 'Lainnya',
-        items: const [
+        items: [
           _MenuItem(
             Icons.shield_outlined,
             'Privasi & Keamanan',
             'PIN, biometrik & privasi',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SecurityPrivacyScreen()),
+            ),
           ),
           _MenuItem(
             Icons.help_outline_rounded,
             'Bantuan',
             'FAQ & hubungi kami',
+            onTap: () async {
+              final whatsappUrl = Uri.parse("https://wa.me/6285849387949");
+              if (await canLaunchUrl(whatsappUrl)) {
+                await launchUrl(whatsappUrl,
+                    mode: LaunchMode.externalApplication);
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Gagal membuka WhatsApp')),
+                  );
+                }
+              }
+            },
           ),
         ],
       ),
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 104),
         child: Column(
@@ -149,11 +235,11 @@ class _ProfileHeader extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 52, 20, 32),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+          colors: [Theme.of(context).primaryColor, Theme.of(context).colorScheme.secondary],
         ),
       ),
       child: Column(
@@ -173,12 +259,23 @@ class _ProfileHeader extends StatelessWidget {
                 color: Colors.white.withValues(alpha: 0.4),
                 width: 3,
               ),
+              image: auth.user?.userMetadata?['avatar_url'] != null &&
+                      File(auth.user?.userMetadata?['avatar_url']).existsSync()
+                  ? DecorationImage(
+                      image: FileImage(
+                          File(auth.user?.userMetadata?['avatar_url'])),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
-            child: const Icon(
-              Icons.business_center_rounded,
-              color: Colors.white,
-              size: 36,
-            ),
+            child: auth.user?.userMetadata?['avatar_url'] == null ||
+                    !File(auth.user?.userMetadata?['avatar_url']).existsSync()
+                ? const Icon(
+                    Icons.business_center_rounded,
+                    color: Colors.white,
+                    size: 36,
+                  )
+                : null,
           ),
           const SizedBox(height: 12),
           Text(
@@ -276,8 +373,8 @@ class _StatItem extends StatelessWidget {
       children: [
         Text(
           value,
-          style: const TextStyle(
-            color: Color(0xFF1F2937),
+          style: TextStyle(
+            color: Theme.of(context).textTheme.bodyLarge?.color,
             fontSize: 18,
             fontWeight: FontWeight.w900,
           ),
@@ -341,21 +438,21 @@ class _MenuTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      onTap: () {},
+      onTap: item.onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Container(
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-          color: const Color(0xFFF0EEFF),
+          color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(14),
         ),
-        child: Icon(item.icon, color: const Color(0xFF6C63FF), size: 20),
+        child: Icon(item.icon, color: Theme.of(context).primaryColor, size: 20),
       ),
       title: Text(
         item.label,
-        style: const TextStyle(
-          color: Color(0xFF1F2937),
+        style: TextStyle(
+          color: Theme.of(context).textTheme.bodyLarge?.color,
           fontSize: 14,
           fontWeight: FontWeight.w700,
         ),
@@ -385,7 +482,7 @@ class _Card extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
@@ -404,13 +501,14 @@ class _MenuSection {
   final String title;
   final List<_MenuItem> items;
 
-  const _MenuSection({required this.title, required this.items});
+  _MenuSection({required this.title, required this.items});
 }
 
 class _MenuItem {
   final IconData icon;
   final String label;
   final String description;
+  final VoidCallback? onTap;
 
-  const _MenuItem(this.icon, this.label, this.description);
+  _MenuItem(this.icon, this.label, this.description, {this.onTap});
 }
