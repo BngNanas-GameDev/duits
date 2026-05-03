@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../routes.dart';
 import '../providers/auth_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/theme_provider.dart';
@@ -80,19 +81,13 @@ class ProfileScreen extends StatelessWidget {
             Icons.person_outline_rounded,
             'Edit Profil',
             'Ubah nama & foto profil',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-            ),
+            onTap: () => Navigator.pushNamed(context, AppRoutes.editProfile),
           ),
           _MenuItem(
             Icons.credit_card_rounded,
             'Kelola Rekening',
             'Tambah atau edit rekening',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ManageCardsScreen()),
-            ),
+            onTap: () => Navigator.pushNamed(context, AppRoutes.manageCards),
           ),
         ],
       ),
@@ -103,10 +98,7 @@ class ProfileScreen extends StatelessWidget {
             Icons.notifications_none_rounded,
             'Notifikasi',
             'Atur pengingat & notifikasi',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-            ),
+            onTap: () => Navigator.pushNamed(context, AppRoutes.notifications),
           ),
           _MenuItem(
             Icons.palette_outlined,
@@ -132,10 +124,7 @@ class ProfileScreen extends StatelessWidget {
             Icons.shield_outlined,
             'Privasi & Keamanan',
             'PIN, biometrik & privasi',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SecurityPrivacyScreen()),
-            ),
+            onTap: () => Navigator.pushNamed(context, AppRoutes.securityPrivacy),
           ),
           _MenuItem(
             Icons.help_outline_rounded,
