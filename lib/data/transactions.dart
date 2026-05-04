@@ -10,6 +10,7 @@ class Transaction {
   final String detail;
   final String date; // Format: YYYY-MM-DD
   final String time; // Format: HH:mm
+  final String? accountId; // Optional account linkage
 
   Transaction({
     required this.id,
@@ -20,6 +21,7 @@ class Transaction {
     required this.detail,
     required this.date,
     required this.time,
+    this.accountId,
   });
 
   factory Transaction.fromSupabase(Map<String, dynamic> row) {
@@ -33,6 +35,7 @@ class Transaction {
       detail: row['detail']?.toString() ?? '',
       date: row['transaction_date']?.toString() ?? '',
       time: rawTime.length >= 5 ? rawTime.substring(0, 5) : rawTime,
+      accountId: row['account_id']?.toString(),
     );
   }
 }

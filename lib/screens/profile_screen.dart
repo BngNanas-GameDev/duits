@@ -3,12 +3,18 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/theme_provider.dart';
+import '../theme/palette.dart';
+import '../routes.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
     final transactions = context.watch<TransactionProvider>().transactions;
     final savingTotal = transactions
         .where((tx) => tx.category == 'Tabungan')
@@ -23,63 +29,82 @@ class ProfileScreen extends StatelessWidget {
     final menuSections = [
       _MenuSection(
         title: 'Akun',
-        items: const [
+        items: [
           _MenuItem(
             Icons.person_outline_rounded,
             'Edit Profil',
             'Ubah nama & foto profil',
+            onTap: () => Navigator.pushNamed(context, AppRoutes.editProfile),
           ),
           _MenuItem(
             Icons.credit_card_rounded,
             'Kelola Rekening',
             'Tambah atau edit rekening',
+            onTap: () => Navigator.pushNamed(context, AppRoutes.manageAccounts),
           ),
         ],
       ),
       _MenuSection(
         title: 'Preferensi',
-        items: const [
+        items: [
           _MenuItem(
             Icons.notifications_none_rounded,
             'Notifikasi',
             'Atur pengingat & notifikasi',
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Fitur ini akan segera hadir.'),
+                ),
+              );
+            },
           ),
           _MenuItem(
             Icons.dark_mode_outlined,
             'Tema Gelap',
-            'Aktifkan mode gelap',
+            isDark ? 'Mode gelap aktif' : 'Aktifkan mode gelap',
+            onTap: () => Navigator.pushNamed(context, AppRoutes.theme),
           ),
           _MenuItem(
             Icons.download_rounded,
             'Ekspor Data',
             'Unduh riwayat transaksi',
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Fitur ini akan segera hadir.'),
+                ),
+              );
+            },
           ),
         ],
       ),
       _MenuSection(
         title: 'Lainnya',
-        items: const [
+        items: [
           _MenuItem(
             Icons.shield_outlined,
             'Privasi & Keamanan',
             'PIN, biometrik & privasi',
+            onTap: () => Navigator.pushNamed(context, AppRoutes.changePin),
           ),
           _MenuItem(
             Icons.help_outline_rounded,
             'Bantuan',
             'FAQ & hubungi kami',
+            onTap: () => Navigator.pushNamed(context, AppRoutes.help),
           ),
         ],
       ),
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: palette.scaffoldBackground(isDark),
       body: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 104),
         child: Column(
           children: [
-            const _ProfileHeader(),
+            _ProfileHeader(),
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -110,11 +135,12 @@ class ProfileScreen extends StatelessWidget {
                       icon: const Icon(Icons.logout_rounded, size: 19),
                       label: const Text('Keluar'),
                       style: TextButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFF0F0),
-                        foregroundColor: const Color(0xFFFF6B6B),
-                        textStyle: const TextStyle(
+                        backgroundColor: palette.accentColor(isDark).withValues(alpha: 0.08),
+                        foregroundColor: palette.accentColor(isDark),
+                        textStyle: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
+                          color: palette.text(isDark),
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(24),
@@ -123,9 +149,12 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'Duits v1.0.0',
-                    style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
+                    style: TextStyle(
+                      color: palette.secondaryText(isDark),
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -143,17 +172,21 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
     final name = auth.user?.userMetadata?['name']?.toString() ?? 'Pengguna';
     final email = auth.email ?? '-';
+    final gradientColors = palette.headerGradient(isDark);
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 52, 20, 32),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+          colors: gradientColors,
         ),
       ),
       child: Column(
@@ -174,7 +207,7 @@ class _ProfileHeader extends StatelessWidget {
                 width: 3,
               ),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.business_center_rounded,
               color: Colors.white,
               size: 36,
@@ -185,7 +218,7 @@ class _ProfileHeader extends StatelessWidget {
             name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -196,7 +229,10 @@ class _ProfileHeader extends StatelessWidget {
             email,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Color(0xFFC7D2FE), fontSize: 14),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.75),
+              fontSize: 14,
+            ),
           ),
           const SizedBox(height: 12),
           Container(
@@ -205,7 +241,7 @@ class _ProfileHeader extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: const Text(
+            child: Text(
               'Premium Member',
               style: TextStyle(
                 color: Colors.white,
@@ -233,6 +269,10 @@ class _StatsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
+
     return _Card(
       child: Row(
         children: [
@@ -250,6 +290,8 @@ class _StatsCard extends StatelessWidget {
           ),
         ],
       ),
+      palette: palette,
+      isDark: isDark,
     );
   }
 }
@@ -272,12 +314,15 @@ class _StatItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+
     return Column(
       children: [
         Text(
           value,
-          style: const TextStyle(
-            color: Color(0xFF1F2937),
+          style: TextStyle(
+            color: isDark ? themeProvider.palette.textDark : themeProvider.palette.textLight,
             fontSize: 18,
             fontWeight: FontWeight.w900,
           ),
@@ -285,7 +330,12 @@ class _StatItem extends StatelessWidget {
         const SizedBox(height: 3),
         Text(
           label,
-          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+          style: TextStyle(
+            color: isDark
+                ? themeProvider.palette.secondaryTextDark
+                : themeProvider.palette.secondaryTextLight,
+            fontSize: 12,
+          ),
         ),
       ],
     );
@@ -299,6 +349,10 @@ class _MenuSectionView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -306,8 +360,8 @@ class _MenuSectionView extends StatelessWidget {
           padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Text(
             section.title.toUpperCase(),
-            style: const TextStyle(
-              color: Color(0xFF94A3B8),
+            style: TextStyle(
+              color: palette.secondaryText(isDark),
               fontSize: 12,
               fontWeight: FontWeight.w900,
             ),
@@ -320,13 +374,18 @@ class _MenuSectionView extends StatelessWidget {
               for (var i = 0; i < section.items.length; i++) ...[
                 _MenuTile(item: section.items[i]),
                 if (i < section.items.length - 1)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Divider(height: 1, color: Color(0xFFF8FAFC)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Divider(
+                      height: 1,
+                      color: palette.dividerColor(isDark),
+                    ),
                   ),
               ],
             ],
           ),
+          palette: palette,
+          isDark: isDark,
         ),
       ],
     );
@@ -340,33 +399,40 @@ class _MenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
+
     return ListTile(
-      onTap: () {},
+      onTap: item.onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Container(
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-          color: const Color(0xFFF0EEFF),
+          color: palette.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(14),
         ),
-        child: Icon(item.icon, color: const Color(0xFF6C63FF), size: 20),
+        child: Icon(item.icon, color: palette.primary, size: 20),
       ),
       title: Text(
         item.label,
-        style: const TextStyle(
-          color: Color(0xFF1F2937),
+        style: TextStyle(
+          color: palette.text(isDark),
           fontSize: 14,
           fontWeight: FontWeight.w700,
         ),
       ),
       subtitle: Text(
         item.description,
-        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+        style: TextStyle(
+          color: palette.secondaryText(isDark),
+          fontSize: 11,
+        ),
       ),
-      trailing: const Icon(
+      trailing: Icon(
         Icons.chevron_right_rounded,
-        color: Color(0xFFCBD5E1),
+        color: palette.secondaryText(isDark),
         size: 20,
       ),
     );
@@ -376,8 +442,15 @@ class _MenuTile extends StatelessWidget {
 class _Card extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
+  final AppPalette palette;
+  final bool isDark;
 
-  const _Card({required this.child, this.padding = const EdgeInsets.all(16)});
+  const _Card({
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.palette = AppPalette.defaultTheme,
+    this.isDark = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -385,11 +458,11 @@ class _Card extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.cardColor(isDark),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -411,6 +484,7 @@ class _MenuItem {
   final IconData icon;
   final String label;
   final String description;
+  final VoidCallback? onTap;
 
-  const _MenuItem(this.icon, this.label, this.description);
+  const _MenuItem(this.icon, this.label, this.description, {this.onTap});
 }

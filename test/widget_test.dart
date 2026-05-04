@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:duits/main.dart';
 import 'package:duits/providers/auth_provider.dart';
 import 'package:duits/providers/couple_provider.dart';
+import 'package:duits/providers/theme_provider.dart';
 
 void main() {
   testWidgets('Duits app shows login screen', (WidgetTester tester) async {
@@ -17,6 +18,7 @@ void main() {
             create: (_) => AuthProvider(enableLocalAuth: false),
           ),
           ChangeNotifierProvider(create: (_) => CoupleProvider()),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ],
         child: const DuitsApp(),
       ),

@@ -6,6 +6,8 @@ import '../data/transactions.dart';
 import '../providers/auth_provider.dart';
 import '../providers/couple_provider.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/theme_provider.dart';
+import '../theme/palette.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,19 +23,23 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final transactionProvider = context.watch<TransactionProvider>();
     final coupleProvider = context.watch<CoupleProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
     final auth = context.watch<AuthProvider>();
     final totalIncome = transactionProvider.totalIncome;
     final totalExpense = transactionProvider.totalSpendingExpense;
     final totalSavings = transactionProvider.totalSavings;
     final totalDebt = coupleProvider.netBalance.abs();
-    final balance = transactionProvider.balance;
+    // Use account-based balance when accounts exist, fallback to transaction balance
+    final balance = transactionProvider.accounts.isNotEmpty
+        ? transactionProvider.getAccountBalanceTotal()
+        : transactionProvider.balance;
     final healthScore = totalIncome == 0
         ? 100
         : (100 - ((totalExpense / totalIncome) * 100).round()).clamp(0, 100);
     final recentTransactions = transactionProvider.sortedTransactions;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: themeProvider.palette.scaffoldBackground(themeProvider.isDarkMode),
       body: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 104),
         child: Column(
@@ -112,14 +118,19 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
+    final gradientColors = palette.headerGradient(isDark);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 52, 20, 112),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF4F46E5), Color(0xFF7C3AED), Color(0xFF6C63FF)],
+          colors: gradientColors,
         ),
       ),
       child: Column(
@@ -130,9 +141,12 @@ class _Header extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Selamat Pagi',
-                    style: TextStyle(color: Color(0xFFC7D2FE), fontSize: 14),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 14,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -158,9 +172,12 @@ class _Header extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 26),
-          const Text(
+          Text(
             'Total Saldo',
-            style: TextStyle(color: Color(0xFFC7D2FE), fontSize: 12),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 12,
+            ),
           ),
           const SizedBox(height: 4),
           Row(
@@ -186,13 +203,16 @@ class _Header extends StatelessWidget {
                       : Icons.visibility_rounded,
                   size: 18,
                 ),
-                color: const Color(0xFFC7D2FE),
+                color: Colors.white.withValues(alpha: 0.7),
               ),
             ],
           ),
-          const Text(
-            'Mei 2026',
-            style: TextStyle(color: Color(0xFFA5B4FC), fontSize: 12),
+          Text(
+            _getMonthLabel(),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.55),
+              fontSize: 12,
+            ),
           ),
           const SizedBox(height: 18),
           _SummaryGrid(
@@ -226,6 +246,15 @@ class _Header extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _getMonthLabel() {
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des',
+    ];
+    final now = DateTime.now();
+    return '${months[now.month]} ${now.year}';
   }
 }
 
@@ -298,8 +327,8 @@ class _SummaryTile extends StatelessWidget {
               children: [
                 Text(
                   item.label,
-                  style: const TextStyle(
-                    color: Color(0xFFC7D2FE),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
                     fontSize: 10,
                   ),
                 ),
@@ -412,8 +441,8 @@ class _QuickActionButton extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               item.label,
-              style: const TextStyle(
-                color: Color(0xFF64748B),
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey,
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
               ),
@@ -432,6 +461,10 @@ class _WeeklyChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
+
     return _Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,10 +472,10 @@ class _WeeklyChart extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Aktivitas Minggu Ini',
                 style: TextStyle(
-                  color: Color(0xFF1F2937),
+                  color: palette.text(isDark),
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                 ),
@@ -453,13 +486,13 @@ class _WeeklyChart extends StatelessWidget {
                   vertical: 5,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0EEFF),
+                  color: palette.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: const Text(
+                child: Text(
                   'Mingguan',
                   style: TextStyle(
-                    color: Color(0xFF6C63FF),
+                    color: palette.primary,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -475,8 +508,8 @@ class _WeeklyChart extends StatelessWidget {
                 minY: 0,
                 gridData: FlGridData(
                   drawVerticalLine: false,
-                  getDrawingHorizontalLine: (_) => const FlLine(
-                    color: Color(0xFFF1F5F9),
+                  getDrawingHorizontalLine: (_) => FlLine(
+                    color: palette.dividerColor(isDark),
                     strokeWidth: 1,
                     dashArray: [4, 4],
                   ),
@@ -497,8 +530,8 @@ class _WeeklyChart extends StatelessWidget {
                         value == 0
                             ? '0'
                             : '${(value / 1000000).toStringAsFixed(1)}jt',
-                        style: const TextStyle(
-                          color: Color(0xFF94A3B8),
+                        style: TextStyle(
+                          color: palette.secondaryText(isDark),
                           fontSize: 10,
                         ),
                       ),
@@ -516,8 +549,8 @@ class _WeeklyChart extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
                             data[index]['day'] as String,
-                            style: const TextStyle(
-                              color: Color(0xFF94A3B8),
+                            style: TextStyle(
+                              color: palette.secondaryText(isDark),
                               fontSize: 11,
                             ),
                           ),
@@ -591,7 +624,10 @@ class _LegendDot extends StatelessWidget {
         const SizedBox(width: 6),
         Text(
           label,
-          style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+          style: TextStyle(
+            color: Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey,
+            fontSize: 12,
+          ),
         ),
       ],
     );
@@ -606,11 +642,18 @@ class _HealthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF0EEFF), Color(0xFFEEF2FF)],
+        gradient: LinearGradient(
+          colors: [
+            palette.primary.withValues(alpha: isDark ? 0.2 : 0.08),
+            palette.secondary.withValues(alpha: isDark ? 0.1 : 0.06),
+          ],
         ),
         borderRadius: BorderRadius.circular(24),
       ),
@@ -620,19 +663,19 @@ class _HealthCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Kesehatan Keuangan',
                   style: TextStyle(
-                    color: Color(0xFF818CF8),
+                    color: palette.primary,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 3),
-                const Text(
+                Text(
                   'Kondisi Baik',
                   style: TextStyle(
-                    color: Color(0xFF1F2937),
+                    color: palette.text(isDark),
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                   ),
@@ -640,8 +683,8 @@ class _HealthCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Pengeluaranmu masih ${(spentRatio * 100).round()}% dari total pemasukan bulan ini.',
-                  style: const TextStyle(
-                    color: Color(0xFF64748B),
+                  style: TextStyle(
+                    color: palette.secondaryText(isDark),
                     fontSize: 12,
                     height: 1.35,
                   ),
@@ -659,14 +702,14 @@ class _HealthCard extends StatelessWidget {
                 CircularProgressIndicator(
                   value: score / 100,
                   strokeWidth: 6,
-                  backgroundColor: const Color(0xFFE0D9FF),
-                  color: const Color(0xFF6C63FF),
+                  backgroundColor: palette.primary.withValues(alpha: 0.15),
+                  color: palette.primary,
                   strokeCap: StrokeCap.round,
                 ),
                 Text(
                   '$score%',
-                  style: const TextStyle(
-                    color: Color(0xFF6C63FF),
+                  style: TextStyle(
+                    color: palette.primary,
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
                   ),
@@ -687,16 +730,20 @@ class _RecentTransactions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
+
     return _Card(
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Transaksi Terbaru',
                 style: TextStyle(
-                  color: Color(0xFF1F2937),
+                  color: palette.text(isDark),
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                 ),
@@ -707,7 +754,7 @@ class _RecentTransactions extends StatelessWidget {
                 icon: const Icon(Icons.chevron_right_rounded, size: 16),
                 label: const Text('Lihat Semua'),
                 style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF6C63FF),
+                  foregroundColor: palette.primary,
                   textStyle: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -730,8 +777,11 @@ class _TransactionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
     final isIncome = tx.type == 'income';
-    final color = categoryColors[tx.category] ?? const Color(0xFF94A3B8);
+    final color = categoryColors[tx.category] ?? palette.secondaryText(isDark);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
@@ -754,8 +804,8 @@ class _TransactionRow extends StatelessWidget {
                   tx.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF1F2937),
+                  style: TextStyle(
+                    color: palette.text(isDark),
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -764,8 +814,8 @@ class _TransactionRow extends StatelessWidget {
                   tx.detail,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF94A3B8),
+                  style: TextStyle(
+                    color: palette.secondaryText(isDark),
                     fontSize: 12,
                   ),
                 ),
@@ -788,7 +838,10 @@ class _TransactionRow extends StatelessWidget {
               ),
               Text(
                 formatDate(tx.date),
-                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                style: TextStyle(
+                  color: palette.secondaryText(isDark),
+                  fontSize: 11,
+                ),
               ),
             ],
           ),
@@ -805,15 +858,19 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.cardColor(isDark),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),

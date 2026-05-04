@@ -37,10 +37,25 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   bool _showSuccess = false;
   bool _argumentsApplied = false;
   Transaction? _editingTransaction;
+  String? _selectedAccountId; // Optional account linkage
+  bool _showAccountPicker = false; // Toggle for account dropdown
+  bool _accountsLoaded = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!_accountsLoaded) {
+      _accountsLoaded = true;
+      final provider = context.read<TransactionProvider>();
+      if (provider.accounts.isEmpty) {
+        provider.loadAccounts();
+      }
+      // Default to first account (Dompet Utama)
+      if (provider.accounts.isNotEmpty && _selectedAccountId == null) {
+        _selectedAccountId = provider.accounts.first['id'] as String;
+        if (mounted) setState(() {});
+      }
+    }
     if (_argumentsApplied) return;
     _argumentsApplied = true;
 
@@ -56,6 +71,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         _titleController.text = transaction.title;
         _detailController.text = transaction.detail;
         _selectedDate = DateTime.tryParse(transaction.date) ?? DateTime.now();
+        _selectedAccountId = transaction.accountId;
         return;
       }
 
@@ -119,6 +135,49 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _Label('Rekening'),
+                  const SizedBox(height: 7),
+                  _AccountSelector(
+                    selectedAccountId: _selectedAccountId,
+                    expanded: _showAccountPicker,
+                    onTap: () => setState(
+                      () => _showAccountPicker = !_showAccountPicker,
+                    ),
+                    onSelected: (accountId) {
+                      setState(() {
+                        _selectedAccountId = accountId;
+                        _showAccountPicker = false;
+                      });
+                    },
+                  ),
+                  if (_showAccountPicker)
+                    Consumer<TransactionProvider>(
+                      builder: (context, provider, _) {
+                        final accounts = provider.accounts;
+                        if (accounts.isEmpty) {
+                          return Container(
+                            margin: const EdgeInsets.only(top: 8),
+                            padding: const EdgeInsets.all(14),
+                            decoration: _fieldDecoration(),
+                            child: const Text(
+                              'Belum ada rekening.',
+                              style: TextStyle(color: Color(0xFF94A3B8)),
+                            ),
+                          );
+                        }
+                        return _AccountDropdown(
+                          accounts: accounts,
+                          selectedAccountId: _selectedAccountId,
+                          onSelected: (accountId) {
+                            setState(() {
+                              _selectedAccountId = accountId;
+                              _showAccountPicker = false;
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  const SizedBox(height: 18),
                   _Label('Kategori'),
                   const SizedBox(height: 7),
                   _CategorySelector(
@@ -239,6 +298,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             title: _titleController.text.trim(),
             detail: _detailController.text.trim(),
             date: _selectedDate,
+            accountId: _selectedAccountId,
           )
         : await provider.addTransaction(
             type: _type,
@@ -247,6 +307,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             title: _titleController.text.trim(),
             detail: _detailController.text.trim(),
             date: _selectedDate,
+            accountId: _selectedAccountId,
           );
 
     if (!mounted) return;
@@ -543,6 +604,181 @@ class _CategorySelector extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AccountSelector extends StatelessWidget {
+  final String? selectedAccountId;
+  final bool expanded;
+  final VoidCallback onTap;
+  final ValueChanged<String> onSelected;
+
+  const _AccountSelector({
+    required this.selectedAccountId,
+    required this.expanded,
+    required this.onTap,
+    required this.onSelected,
+  });
+
+  String _getAccountName(BuildContext context, String? id) {
+    final provider = context.watch<TransactionProvider>();
+    if (id == null || provider.accounts.isEmpty) return 'Pilih Rekening';
+    final account = provider.accounts.firstWhere(
+      (a) => a['id'] == id,
+      orElse: () => provider.accounts.first,
+    );
+    return account['name']?.toString() ?? 'Pilih Rekening';
+  }
+
+  IconData _getAccountIcon(BuildContext context, String? id) {
+    final provider = context.watch<TransactionProvider>();
+    if (id == null || provider.accounts.isEmpty) return Icons.account_balance_wallet_rounded;
+    final account = provider.accounts.firstWhere(
+      (a) => a['id'] == id,
+      orElse: () => provider.accounts.first,
+    );
+    final type = (account['type'] as String? ?? '').toLowerCase();
+    switch (type) {
+      case 'cash':
+      case 'dompet':
+        return Icons.wallet_rounded;
+      case 'debit card':
+      case 'debit':
+        return Icons.credit_card_rounded;
+      case 'credit card':
+      case 'credit':
+        return Icons.credit_card_outlined;
+      case 'e-wallet':
+      case 'ewallet':
+        return Icons.account_balance_wallet_rounded;
+      case 'bank account':
+      case 'bank':
+        return Icons.account_balance_rounded;
+      default:
+        return Icons.account_balance_wallet_rounded;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Consumer<TransactionProvider>(
+        builder: (context, provider, _) {
+          final accountName = _getAccountName(context, selectedAccountId);
+          final icon = _getAccountIcon(context, selectedAccountId);
+          return Container(
+            padding: const EdgeInsets.all(14),
+            decoration: _fieldDecoration(),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: primary, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    accountName,
+                    style: const TextStyle(
+                      color: Color(0xFF1F2937),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: expanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 180),
+                  child: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: Color(0xFF94A3B8),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _AccountDropdown extends StatelessWidget {
+  final List<Map<String, dynamic>> accounts;
+  final String? selectedAccountId;
+  final ValueChanged<String> onSelected;
+
+  const _AccountDropdown({
+    required this.accounts,
+    required this.selectedAccountId,
+    required this.onSelected,
+  });
+
+  IconData _getTypeIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'cash':
+      case 'dompet':
+        return Icons.wallet_rounded;
+      case 'debit card':
+      case 'debit':
+        return Icons.credit_card_rounded;
+      case 'credit card':
+      case 'credit':
+        return Icons.credit_card_outlined;
+      case 'e-wallet':
+      case 'ewallet':
+        return Icons.account_balance_wallet_rounded;
+      case 'bank account':
+      case 'bank':
+        return Icons.account_balance_rounded;
+      default:
+        return Icons.account_balance_wallet_rounded;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      decoration: _fieldDecoration(),
+      child: Column(
+        children: [
+          for (final account in accounts)
+            ListTile(
+              onTap: () => onSelected(account['id'] as String),
+              leading: Icon(
+                _getTypeIcon(account['type']?.toString() ?? ''),
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              title: Text(
+                account['name']?.toString() ?? '',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              subtitle: Text(
+                (account['type']?.toString() ?? '').replaceFirstMapped(
+                  RegExp(r'^\w'),
+                  (m) => m.group(0)!.toUpperCase(),
+                ),
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+              ),
+              trailing: selectedAccountId == account['id']
+                  ? const Icon(Icons.check_rounded, color: Color(0xFF6C63FF))
+                  : null,
+            ),
+        ],
       ),
     );
   }

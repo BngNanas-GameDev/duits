@@ -7,6 +7,8 @@ import 'routes.dart';
 import 'providers/auth_provider.dart';
 import 'providers/couple_provider.dart';
 import 'providers/transaction_provider.dart';
+import 'providers/theme_provider.dart';
+import 'theme/palette.dart';
 
 void main() async {
   // 1. Inisialisasi wajib untuk aplikasi async
@@ -30,6 +32,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
         ChangeNotifierProvider(create: (_) => CoupleProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
       child: const DuitsApp(),
     ),
@@ -41,22 +44,21 @@ class DuitsApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Duits',
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6C63FF),
-          primary: const Color(0xFF6C63FF),
-          secondary: const Color(0xFFEC4899),
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-      ),
-      // Menggunakan rute dari file routes.dart
-      initialRoute: AppRoutes.root,
-      routes: AppRoutes.getRoutes(),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        final palette = themeProvider.palette;
+
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Duits',
+          theme: palette.toLightTheme(),
+          darkTheme: palette.toDarkTheme(),
+          themeMode: themeProvider.themeMode,
+          // Menggunakan rute dari file routes.dart
+          initialRoute: AppRoutes.root,
+          routes: AppRoutes.getRoutes(),
+        );
+      },
     );
   }
 }

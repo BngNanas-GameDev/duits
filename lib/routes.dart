@@ -8,6 +8,12 @@ import 'screens/transactions_screen.dart';
 import 'screens/add_transaction_screen.dart';
 import 'screens/analytics_screen.dart';
 import 'screens/couple_debt_screen.dart';
+import 'screens/edit_profile_screen.dart';
+import 'screens/manage_accounts_screen.dart';
+import 'screens/add_account_screen.dart';
+import 'screens/change_pin_screen.dart';
+import 'screens/theme_screen.dart';
+import 'screens/help_screen.dart';
 
 class AppRoutes {
   // Konstanta Nama Rute
@@ -17,6 +23,12 @@ class AppRoutes {
   static const String analytics = '/analytics';
   static const String coupleDebt = '/couple';
   static const String transactions = '/transactions';
+  static const String editProfile = '/edit-profile';
+  static const String manageAccounts = '/manage-accounts';
+  static const String addAccount = '/add-account';
+  static const String changePin = '/change-pin';
+  static const String theme = '/theme';
+  static const String help = '/help';
 
   static Map<String, WidgetBuilder> getRoutes() {
     return {
@@ -31,6 +43,14 @@ class AppRoutes {
       addTransaction: (context) => const AddTransactionScreen(),
       analytics: (context) => const AnalyticsScreen(),
       coupleDebt: (context) => const CoupleDebtScreen(),
+
+      // New screens
+      editProfile: (context) => const EditProfileScreen(),
+      manageAccounts: (context) => const ManageAccountsScreen(),
+      addAccount: (context) => const AddAccountScreen(),
+      changePin: (context) => const ChangePinScreen(),
+      theme: (context) => const ThemeScreen(),
+      help: (context) => const HelpScreen(),
     };
   }
 }
