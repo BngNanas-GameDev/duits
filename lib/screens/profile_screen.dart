@@ -60,8 +60,8 @@ class ProfileScreen extends StatelessWidget {
             },
           ),
           _MenuItem(
-            Icons.dark_mode_outlined,
-            'Tema Gelap',
+            Icons.brush_outlined,
+            'Tema',
             isDark ? 'Mode gelap aktif' : 'Aktifkan mode gelap',
             onTap: () => Navigator.pushNamed(context, AppRoutes.theme),
           ),
@@ -274,6 +274,8 @@ class _StatsCard extends StatelessWidget {
     final palette = themeProvider.palette;
 
     return _Card(
+      palette: palette,
+      isDark: isDark,
       child: Row(
         children: [
           Expanded(
@@ -290,8 +292,6 @@ class _StatsCard extends StatelessWidget {
           ),
         ],
       ),
-      palette: palette,
-      isDark: isDark,
     );
   }
 }
@@ -369,6 +369,8 @@ class _MenuSectionView extends StatelessWidget {
         ),
         _Card(
           padding: EdgeInsets.zero,
+          palette: palette,
+          isDark: isDark,
           child: Column(
             children: [
               for (var i = 0; i < section.items.length; i++) ...[
@@ -384,8 +386,6 @@ class _MenuSectionView extends StatelessWidget {
               ],
             ],
           ),
-          palette: palette,
-          isDark: isDark,
         ),
       ],
     );

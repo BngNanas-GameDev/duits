@@ -8,7 +8,6 @@ import 'providers/auth_provider.dart';
 import 'providers/couple_provider.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/theme_provider.dart';
-import 'theme/palette.dart';
 
 void main() async {
   // 1. Inisialisasi wajib untuk aplikasi async

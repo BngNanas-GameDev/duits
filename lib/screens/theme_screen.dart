@@ -75,47 +75,47 @@ class _ThemeScreenState extends State<ThemeScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ThemeModeOption(
-                        icon: Icons.light_mode_rounded,
-                        label: 'Terang',
-                        selected:
-                            themeProvider.themeMode == ThemeMode.light,
-                        onTap: () {
-                          setState(() => _localThemeMode = ThemeMode.light);
-                          themeProvider.setThemeMode(ThemeMode.light);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _ThemeModeOption(
-                        icon: Icons.dark_mode_rounded,
-                        label: 'Gelap',
-                        selected: themeProvider.themeMode == ThemeMode.dark,
-                        onTap: () {
-                          setState(() => _localThemeMode = ThemeMode.dark);
-                          themeProvider.setThemeMode(ThemeMode.dark);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _ThemeModeOption(
-                        icon: Icons.brightness_auto_rounded,
-                        label: 'Sistem',
-                        selected:
-                            themeProvider.themeMode == ThemeMode.system,
-                        onTap: () {
-                          setState(() => _localThemeMode = ThemeMode.system);
-                          themeProvider.setThemeMode(ThemeMode.system);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
+Row(
+                   children: [
+                     Expanded(
+                       child: _ThemeModeOption(
+                         icon: Icons.light_mode_rounded,
+                         label: 'Terang',
+                         selected:
+                             themeProvider.themeMode == ThemeMode.light,
+                         onTap: () {
+                           setState(() => _localThemeMode = ThemeMode.light);
+                           themeProvider.setThemeMode(ThemeMode.light);
+                         },
+                       ),
+                     ),
+                     const SizedBox(width: 12),
+                     Expanded(
+                       child: _ThemeModeOption(
+                         icon: Icons.dark_mode_rounded,
+                         label: 'Gelap',
+                         selected: themeProvider.themeMode == ThemeMode.dark,
+                         onTap: () {
+                           setState(() => _localThemeMode = ThemeMode.dark);
+                           themeProvider.setThemeMode(ThemeMode.dark);
+                         },
+                       ),
+                     ),
+                     const SizedBox(width: 12),
+                     Expanded(
+                       child: _ThemeModeOption(
+                         icon: Icons.brightness_auto_rounded,
+                         label: 'Sistem',
+                         selected:
+                             themeProvider.themeMode == ThemeMode.system,
+                         onTap: () {
+                           setState(() => _localThemeMode = ThemeMode.system);
+                           themeProvider.setThemeMode(ThemeMode.system);
+                         },
+                       ),
+                     ),
+                   ],
+                 ),
               ],
             ),
           ),

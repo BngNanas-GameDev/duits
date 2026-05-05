@@ -46,7 +46,7 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
           .from('accounts')
           .select('id, name, type, opening_balance, created_at')
           .eq('user_id', userId)
-          .is_('archived_at', null)
+          .isFilter('archived_at', null)
           .order('created_at', ascending: false);
 
       if (mounted) {

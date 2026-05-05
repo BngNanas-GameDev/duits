@@ -124,13 +124,13 @@ class HelpScreen extends StatelessWidget {
                 _FaqTile(
                   question: 'Apakah data saya aman?',
                   answer:
-                      'Ya, semua data disimpan dengan aman di Supabase dengan enkripsi. PIN Anda disimpan secara lokal di perangkat dengan enkripsi secure storage.',
+                      'Ya, semua data disimpan dengan aman di Pusat data kami dengan enkripsi. PIN Anda disimpan secara lokal di perangkat dengan enkripsi secure storage.',
                 ),
                 _Divider(),
                 _FaqTile(
                   question: 'Bagaimana cara mengubah tema warna?',
                   answer:
-                      'Buka Profil > Tema Gelap untuk mengubah ke mode gelap, dan kelola palet warna di pengaturan tema.',
+                      'Buka Profil > Tema untuk mengubah ke mode gelap, dan kelola palet warna di pengaturan tema.',
                 ),
                 _Divider(),
                 _FaqTile(

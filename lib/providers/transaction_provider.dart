@@ -205,7 +205,7 @@ class TransactionProvider extends ChangeNotifier {
             'transaction_date': _dateKey(date),
             'transaction_time':
                 '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
-            if (accountId != null) 'account_id': accountId,
+            'account_id': ?accountId,
           })
           .select()
           .single();
@@ -252,7 +252,7 @@ class TransactionProvider extends ChangeNotifier {
             'title': title,
             'detail': detail,
             'transaction_date': _dateKey(date),
-            if (accountId != null) 'account_id': accountId,
+            'account_id': ?accountId,
           })
           .eq('id', id)
           .eq('user_id', userId)

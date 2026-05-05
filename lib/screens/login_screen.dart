@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 
 enum _LoginMode { account, choice, pin, biometric, setupPin }
 
@@ -74,16 +75,17 @@ class _LoginScreenState extends State<LoginScreen>
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     _syncModeWithAuth(auth);
+    final palette = context.watch<ThemeProvider>().palette;
 
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF3B30D4), Color(0xFF6C3AED), Color(0xFF7C63FF)],
+            colors: palette.headerGradientLight,
           ),
         ),
         child: SafeArea(

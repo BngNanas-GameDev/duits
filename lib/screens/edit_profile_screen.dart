@@ -118,17 +118,31 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     try {
       final avatarUrl = _avatarUrlController.text.trim();
 
-      // Update via Supabase auth update (userMetadata)
-      await auth.user?.update(data: {'name': name});
+      // Check if profile exists first
+      final existingProfile = await _supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', userId)
+          .maybeSingle();
 
-      // Upsert into profiles table
-      await _supabase.from('profiles').upsert({
-        'id': userId,
-        'name': name,
-        'email': auth.email ?? '',
-        if (avatarUrl.isNotEmpty) 'avatar_url': avatarUrl,
-        'updated_at': DateTime.now().toIso8601String(),
-      });
+      if (existingProfile != null) {
+        // Update existing profile
+        await _supabase.from('profiles').update({
+          'name': name,
+          if (avatarUrl.isNotEmpty) 'avatar_url': avatarUrl,
+          'email': auth.email ?? '',
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', userId);
+      } else {
+        // Insert new profile
+        await _supabase.from('profiles').insert({
+          'id': userId,
+          'name': name,
+          'email': auth.email ?? '',
+          if (avatarUrl.isNotEmpty) 'avatar_url': avatarUrl,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }
 
       if (mounted) {
         setState(() {
@@ -158,6 +172,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final email = auth.email ?? '-';
+    final emailController = TextEditingController(text: email);
 
     return Scaffold(
       appBar: AppBar(
@@ -184,7 +199,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                 // Email field (read-only)
                 _LabeledInput(
                   label: 'Email',
-                  initialValue: email,
+                  controller: emailController,
                   enabled: false,
                   icon: Icons.mail_outline_rounded,
                 ),
@@ -347,15 +362,13 @@ class _FormCard extends StatelessWidget {
 
 class _LabeledInput extends StatelessWidget {
   final String label;
-  final TextEditingController? controller;
-  final String? initialValue;
+  final TextEditingController controller;
   final bool enabled;
   final IconData? icon;
 
   const _LabeledInput({
     required this.label,
-    this.controller,
-    this.initialValue,
+    required this.controller,
     this.enabled = true,
     this.icon,
   });
@@ -403,7 +416,6 @@ class _LabeledInput extends StatelessWidget {
               vertical: 12,
             ),
           ),
-          initialValue: controller == null ? initialValue : null,
         ),
       ],
     );

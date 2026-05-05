@@ -14,6 +14,7 @@ import 'screens/add_account_screen.dart';
 import 'screens/change_pin_screen.dart';
 import 'screens/theme_screen.dart';
 import 'screens/help_screen.dart';
+import 'widgets/update_gate.dart';
 
 class AppRoutes {
   // Konstanta Nama Rute
@@ -77,6 +78,8 @@ class _AuthGate extends StatelessWidget {
     }
 
     // PIN loaded — route based on auth state
-    return auth.isAuthenticated ? const MainLayout() : const LoginScreen();
+    return auth.isAuthenticated 
+        ? UpdateGate(child: const MainLayout()) 
+        : const LoginScreen();
   }
 }
