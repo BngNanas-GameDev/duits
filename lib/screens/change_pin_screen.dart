@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 
 class ChangePinScreen extends StatefulWidget {
   const ChangePinScreen({super.key});
@@ -200,11 +201,25 @@ class _ChangePinScreenState extends State<ChangePinScreen>
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
+    final gradientColors = palette.headerGradient(isDark);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ubah PIN'),
         centerTitle: true,
         elevation: 0,
+        backgroundColor: palette.scaffoldBackground(isDark),
+        surfaceTintColor: Colors.transparent,
+        foregroundColor: palette.text(isDark),
+        titleTextStyle: TextStyle(
+          color: palette.text(isDark),
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+        ),
+        iconTheme: IconThemeData(color: palette.text(isDark)),
         leading: _step > 1
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
@@ -225,11 +240,11 @@ class _ChangePinScreenState extends State<ChangePinScreen>
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF3B30D4), Color(0xFF6C3AED), Color(0xFF7C63FF)],
+            colors: gradientColors,
           ),
         ),
         child: SafeArea(
@@ -244,7 +259,6 @@ class _ChangePinScreenState extends State<ChangePinScreen>
                   child: Column(
                     key: ValueKey(_step),
                     children: [
-                      // Step indicator dots
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: List.generate(3, (index) {
@@ -257,14 +271,13 @@ class _ChangePinScreenState extends State<ChangePinScreen>
                             decoration: BoxDecoration(
                               color: stepNum <= _step
                                   ? Colors.white
-                                  : Colors.white.withOpacity(0.3),
+                                  : Colors.white.withValues(alpha: 0.3),
                               borderRadius: BorderRadius.circular(8),
                             ),
                           );
                         }),
                       ),
                       const SizedBox(height: 32),
-                      // Title
                       Text(
                         _title,
                         style: const TextStyle(
@@ -274,20 +287,17 @@ class _ChangePinScreenState extends State<ChangePinScreen>
                         ),
                       ),
                       const SizedBox(height: 6),
-                      // Subtitle
                       Text(
                         _subtitle,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFFC7D2FE),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
                           fontSize: 14,
                         ),
                       ),
                       const SizedBox(height: 28),
-                      // PIN Dots
                       animatedPinDots,
                       const SizedBox(height: 12),
-                      // Error message
                       if (_error.isNotEmpty)
                         Text(
                           _error,
@@ -299,7 +309,6 @@ class _ChangePinScreenState extends State<ChangePinScreen>
                           ),
                         ),
                       const SizedBox(height: 20),
-                      // Numpad
                       SizedBox(
                         width: 280,
                         child: GridView.count(
@@ -335,7 +344,6 @@ class _ChangePinScreenState extends State<ChangePinScreen>
                           ],
                         ),
                       ),
-                      // Biometric button (step 1 only)
                       if (_step == 1) ...[
                         const SizedBox(height: 20),
                         Consumer<AuthProvider>(
@@ -349,7 +357,7 @@ class _ChangePinScreenState extends State<ChangePinScreen>
                               label: const Text('Gunakan Sidik Jari'),
                               style: TextButton.styleFrom(
                                 foregroundColor:
-                                    const Color(0xFFA5B4FC),
+                                    Colors.white.withValues(alpha: 0.7),
                               ),
                             );
                           },
@@ -390,7 +398,7 @@ class _ChangePinScreenState extends State<ChangePinScreen>
               border: Border.all(
                 color: index < _currentInput.length
                     ? Colors.white
-                    : Colors.white38,
+                    : Colors.white.withValues(alpha: 0.38),
                 width: 2,
               ),
             ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
@@ -149,12 +150,20 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    'Duits v1.0.0',
-                    style: TextStyle(
-                      color: palette.secondaryText(isDark),
-                      fontSize: 12,
-                    ),
+                  FutureBuilder<PackageInfo>(
+                    future: PackageInfo.fromPlatform(),
+                    builder: (context, snapshot) {
+                      final version = snapshot.hasData
+                          ? snapshot.data!.version
+                          : '1.0.0';
+                      return Text(
+                        'Duits v$version',
+                        style: TextStyle(
+                          color: palette.secondaryText(isDark),
+                          fontSize: 12,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

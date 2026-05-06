@@ -7,6 +7,7 @@ import '../providers/auth_provider.dart';
 import '../providers/couple_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/theme_provider.dart';
+import '../theme/palette.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -141,7 +142,7 @@ class _Header extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Selamat Pagi',
+                    _getGreeting(),
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.7),
                       fontSize: 14,
@@ -245,6 +246,14 @@ class _Header extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 3 && hour < 11) return 'Selamat Pagi';
+    if (hour >= 11 && hour < 15) return 'Selamat Siang';
+    if (hour >= 15 && hour < 18) return 'Selamat Sore';
+    return 'Selamat Malam';
   }
 
   String _getMonthLabel() {
@@ -639,18 +648,42 @@ class _HealthCard extends StatelessWidget {
 
   const _HealthCard({required this.score, required this.spentRatio});
 
+  String _getStatusText(double ratio) {
+    if (ratio >= 0.8) return 'Kondisi Kritis';
+    if (ratio >= 0.5) return 'Perlu Perhatian';
+    return 'Kondisi Baik';
+  }
+
+  Color _getStatusColor(double ratio, AppPalette palette, bool isDark) {
+    if (ratio >= 0.8) return const Color(0xFFFF4444);
+    if (ratio >= 0.5) return const Color(0xFFFFB347);
+    return palette.primary;
+  }
+
+  String _getDescription(double ratio) {
+    final percent = (ratio * 100).round();
+    if (ratio >= 0.8) {
+      return 'Pengeluaranmu sudah $percent% dari pemasukan. Segera kurangi pengeluaran!';
+    }
+    if (ratio >= 0.5) {
+      return 'Pengeluaranmu $percent% dari pemasukan. Mulailah lebih hemat.';
+    }
+    return 'Pengeluaranmu $percent% dari pemasukan. Keuanganmu sehat.';
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
     final isDark = themeProvider.isDarkMode;
     final palette = themeProvider.palette;
+    final statusColor = _getStatusColor(spentRatio, palette, isDark);
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            palette.primary.withValues(alpha: isDark ? 0.2 : 0.08),
+            statusColor.withValues(alpha: isDark ? 0.2 : 0.08),
             palette.secondary.withValues(alpha: isDark ? 0.1 : 0.06),
           ],
         ),
@@ -665,14 +698,14 @@ class _HealthCard extends StatelessWidget {
                 Text(
                   'Kesehatan Keuangan',
                   style: TextStyle(
-                    color: palette.primary,
+                    color: statusColor,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Kondisi Baik',
+                  _getStatusText(spentRatio),
                   style: TextStyle(
                     color: palette.text(isDark),
                     fontSize: 15,
@@ -681,7 +714,7 @@ class _HealthCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Pengeluaranmu masih ${(spentRatio * 100).round()}% dari total pemasukan bulan ini.',
+                  _getDescription(spentRatio),
                   style: TextStyle(
                     color: palette.secondaryText(isDark),
                     fontSize: 12,
@@ -701,14 +734,14 @@ class _HealthCard extends StatelessWidget {
                 CircularProgressIndicator(
                   value: score / 100,
                   strokeWidth: 6,
-                  backgroundColor: palette.primary.withValues(alpha: 0.15),
-                  color: palette.primary,
+                  backgroundColor: statusColor.withValues(alpha: 0.15),
+                  color: statusColor,
                   strokeCap: StrokeCap.round,
                 ),
                 Text(
                   '$score%',
                   style: TextStyle(
-                    color: palette.primary,
+                    color: statusColor,
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
                   ),

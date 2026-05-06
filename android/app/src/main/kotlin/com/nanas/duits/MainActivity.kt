@@ -1,4 +1,4 @@
-package com.example.duits
+package com.nanas.duits
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 

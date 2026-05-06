@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../providers/theme_provider.dart';
 
 class BottomNav extends StatelessWidget {
   final int currentIndex;
@@ -8,16 +11,20 @@ class BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
+
     return SafeArea(
       top: false,
       child: Container(
         height: 86,
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: const Border(top: BorderSide(color: Color(0xFFF1F5F9))),
+          color: palette.surfaceColor(isDark),
+          border: Border(top: BorderSide(color: palette.dividerColor(isDark))),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
               blurRadius: 20,
               offset: const Offset(0, -4),
             ),
@@ -38,6 +45,7 @@ class BottomNav extends StatelessWidget {
                     icon: Icons.home_rounded,
                     label: 'Beranda',
                     onTap: onTap,
+                    isDark: isDark,
                   ),
                   _NavItem(
                     index: 1,
@@ -45,8 +53,9 @@ class BottomNav extends StatelessWidget {
                     icon: Icons.list_alt_rounded,
                     label: 'Riwayat',
                     onTap: onTap,
+                    isDark: isDark,
                   ),
-                  _MainNavItem(onTap: () => onTap(2)),
+                  _MainNavItem(onTap: () => onTap(2), isDark: isDark),
                   _NavItem(
                     index: 3,
                     currentIndex: currentIndex,
@@ -54,6 +63,7 @@ class BottomNav extends StatelessWidget {
                     label: 'Pasangan',
                     activeColor: const Color(0xFFEC4899),
                     onTap: onTap,
+                    isDark: isDark,
                   ),
                   _NavItem(
                     index: 4,
@@ -61,6 +71,7 @@ class BottomNav extends StatelessWidget {
                     icon: Icons.person_rounded,
                     label: 'Profil',
                     onTap: onTap,
+                    isDark: isDark,
                   ),
                 ],
               ),
@@ -79,6 +90,7 @@ class _NavItem extends StatelessWidget {
   final String label;
   final Color activeColor;
   final ValueChanged<int> onTap;
+  final bool isDark;
 
   const _NavItem({
     required this.index,
@@ -87,12 +99,14 @@ class _NavItem extends StatelessWidget {
     required this.label,
     this.activeColor = const Color(0xFF6C63FF),
     required this.onTap,
+    required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
     final isActive = currentIndex == index;
-    final color = isActive ? activeColor : const Color(0xFF94A3B8);
+    final inactiveColor = isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
+    final color = isActive ? activeColor : inactiveColor;
     return Expanded(
       child: InkWell(
         onTap: () => onTap(index),
@@ -122,11 +136,13 @@ class _NavItem extends StatelessWidget {
 
 class _MainNavItem extends StatelessWidget {
   final VoidCallback onTap;
+  final bool isDark;
 
-  const _MainNavItem({required this.onTap});
+  const _MainNavItem({required this.onTap, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
+    final inactiveColor = isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -163,10 +179,10 @@ class _MainNavItem extends StatelessWidget {
             ),
             Transform.translate(
               offset: const Offset(0, -10),
-              child: const Text(
+              child: Text(
                 'Tambah',
                 style: TextStyle(
-                  color: Color(0xFF94A3B8),
+                  color: inactiveColor,
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                 ),

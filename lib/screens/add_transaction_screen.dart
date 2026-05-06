@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 
 import '../data/transactions.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/theme_provider.dart';
+import '../theme/palette.dart';
 
 const List<String> expenseCategories = [
   'Belanja',
@@ -112,9 +114,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   @override
   Widget build(BuildContext context) {
     if (_showSuccess) return const _SuccessView();
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: palette.scaffoldBackground(isDark),
       body: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 32),
         child: Column(
@@ -124,18 +129,22 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               isEditing: _isEditing,
               onBack: () => Navigator.maybePop(context),
               onTypeChanged: _handleTypeChange,
+              isDark: isDark,
+              palette: palette,
             ),
             _AmountInput(
               controller: _amountController,
               type: _type,
               onChanged: _handleAmountChange,
+              isDark: isDark,
+              palette: palette,
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _Label('Rekening'),
+                  _Label('Rekening', isDark: isDark, palette: palette),
                   const SizedBox(height: 7),
                   _AccountSelector(
                     selectedAccountId: _selectedAccountId,
@@ -149,6 +158,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         _showAccountPicker = false;
                       });
                     },
+                    isDark: isDark,
+                    palette: palette,
                   ),
                   if (_showAccountPicker)
                     Consumer<TransactionProvider>(
@@ -158,10 +169,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                           return Container(
                             margin: const EdgeInsets.only(top: 8),
                             padding: const EdgeInsets.all(14),
-                            decoration: _fieldDecoration(),
-                            child: const Text(
+                            decoration: _fieldDecoration(isDark, palette),
+                            child: Text(
                               'Belum ada rekening.',
-                              style: TextStyle(color: Color(0xFF94A3B8)),
+                              style: TextStyle(
+                                color: palette.secondaryText(isDark),
+                              ),
                             ),
                           );
                         }
@@ -174,11 +187,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                               _showAccountPicker = false;
                             });
                           },
+                          isDark: isDark,
+                          palette: palette,
                         );
                       },
                     ),
                   const SizedBox(height: 18),
-                  _Label('Kategori'),
+                  _Label('Kategori', isDark: isDark, palette: palette),
                   const SizedBox(height: 7),
                   _CategorySelector(
                     category: _category,
@@ -186,6 +201,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     onTap: () => setState(
                       () => _showCategoryPicker = !_showCategoryPicker,
                     ),
+                    isDark: isDark,
+                    palette: palette,
                   ),
                   if (_showCategoryPicker)
                     _CategoryDropdown(
@@ -197,28 +214,43 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                           _showCategoryPicker = false;
                         });
                       },
+                      isDark: isDark,
+                      palette: palette,
                     ),
                   const SizedBox(height: 18),
-                  _Label('Judul Transaksi'),
+                  _Label('Judul Transaksi', isDark: isDark, palette: palette),
                   const SizedBox(height: 7),
                   _TextBox(
                     controller: _titleController,
                     hint: 'Contoh: Belanja mingguan',
                     onChanged: (_) => setState(() {}),
+                    isDark: isDark,
+                    palette: palette,
                   ),
                   const SizedBox(height: 18),
-                  const _Label('Detail / Keterangan (opsional)'),
+                  _Label(
+                    'Detail / Keterangan (opsional)',
+                    isDark: isDark,
+                    palette: palette,
+                  ),
                   const SizedBox(height: 7),
                   _TextBox(
                     controller: _detailController,
                     hint:
                         'Tambahkan detail pengeluaran, nama toko, atau catatan lainnya...',
                     maxLines: 4,
+                    isDark: isDark,
+                    palette: palette,
                   ),
                   const SizedBox(height: 18),
-                  const _Label('Tanggal'),
+                  _Label('Tanggal', isDark: isDark, palette: palette),
                   const SizedBox(height: 7),
-                  _DateSelector(date: _selectedDate, onTap: _selectDate),
+                  _DateSelector(
+                    date: _selectedDate,
+                    onTap: _selectDate,
+                    isDark: isDark,
+                    palette: palette,
+                  ),
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
@@ -344,23 +376,28 @@ class _Header extends StatelessWidget {
   final bool isEditing;
   final VoidCallback onBack;
   final ValueChanged<String> onTypeChanged;
+  final bool isDark;
+  final AppPalette palette;
 
   const _Header({
     required this.type,
     required this.isEditing,
     required this.onBack,
     required this.onTypeChanged,
+    required this.isDark,
+    required this.palette,
   });
 
   @override
   Widget build(BuildContext context) {
+    final gradientColors = palette.headerGradient(isDark);
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 52, 20, 24),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+          colors: gradientColors,
         ),
       ),
       child: Column(
@@ -471,11 +508,15 @@ class _AmountInput extends StatelessWidget {
   final TextEditingController controller;
   final String type;
   final ValueChanged<String> onChanged;
+  final bool isDark;
+  final AppPalette palette;
 
   const _AmountInput({
     required this.controller,
     required this.type,
     required this.onChanged,
+    required this.isDark,
+    required this.palette,
   });
 
   @override
@@ -485,14 +526,14 @@ class _AmountInput extends StatelessWidget {
         : const Color(0xFF6C63FF);
     return Container(
       width: double.infinity,
-      color: const Color(0xFFF8F7FF),
+      color: palette.cardColor(isDark),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
       child: Column(
         children: [
-          const Text(
+          Text(
             'Jumlah',
             style: TextStyle(
-              color: Color(0xFF94A3B8),
+              color: palette.secondaryText(isDark),
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -500,10 +541,10 @@ class _AmountInput extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
+              Text(
                 'Rp',
                 style: TextStyle(
-                  color: Color(0xFF94A3B8),
+                  color: palette.secondaryText(isDark),
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
                 ),
@@ -522,14 +563,16 @@ class _AmountInput extends StatelessWidget {
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xFF1F2937),
+                      style: TextStyle(
+                        color: palette.text(isDark),
                         fontSize: 38,
                         fontWeight: FontWeight.w900,
                       ),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: '0',
-                        hintStyle: TextStyle(color: Color(0xFFCBD5E1)),
+                        hintStyle: TextStyle(
+                          color: palette.secondaryText(isDark),
+                        ),
                         border: InputBorder.none,
                       ),
                     ),
@@ -556,11 +599,15 @@ class _CategorySelector extends StatelessWidget {
   final String category;
   final bool expanded;
   final VoidCallback onTap;
+  final bool isDark;
+  final AppPalette palette;
 
   const _CategorySelector({
     required this.category,
     required this.expanded,
     required this.onTap,
+    required this.isDark,
+    required this.palette,
   });
 
   @override
@@ -571,7 +618,7 @@ class _CategorySelector extends StatelessWidget {
       borderRadius: BorderRadius.circular(18),
       child: Container(
         padding: const EdgeInsets.all(14),
-        decoration: _fieldDecoration(),
+        decoration: _fieldDecoration(isDark, palette),
         child: Row(
           children: [
             Container(
@@ -587,8 +634,8 @@ class _CategorySelector extends StatelessWidget {
             Expanded(
               child: Text(
                 category,
-                style: const TextStyle(
-                  color: Color(0xFF1F2937),
+                style: TextStyle(
+                  color: palette.text(isDark),
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
@@ -597,9 +644,9 @@ class _CategorySelector extends StatelessWidget {
             AnimatedRotation(
               turns: expanded ? 0.5 : 0,
               duration: const Duration(milliseconds: 180),
-              child: const Icon(
+              child: Icon(
                 Icons.keyboard_arrow_down_rounded,
-                color: Color(0xFF94A3B8),
+                color: palette.secondaryText(isDark),
               ),
             ),
           ],
@@ -614,12 +661,16 @@ class _AccountSelector extends StatelessWidget {
   final bool expanded;
   final VoidCallback onTap;
   final ValueChanged<String> onSelected;
+  final bool isDark;
+  final AppPalette palette;
 
   const _AccountSelector({
     required this.selectedAccountId,
     required this.expanded,
     required this.onTap,
     required this.onSelected,
+    required this.isDark,
+    required this.palette,
   });
 
   String _getAccountName(BuildContext context, String? id) {
@@ -673,7 +724,7 @@ class _AccountSelector extends StatelessWidget {
           final icon = _getAccountIcon(context, selectedAccountId);
           return Container(
             padding: const EdgeInsets.all(14),
-            decoration: _fieldDecoration(),
+            decoration: _fieldDecoration(isDark, palette),
             child: Row(
               children: [
                 Container(
@@ -689,8 +740,8 @@ class _AccountSelector extends StatelessWidget {
                 Expanded(
                   child: Text(
                     accountName,
-                    style: const TextStyle(
-                      color: Color(0xFF1F2937),
+                    style: TextStyle(
+                      color: palette.text(isDark),
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                     ),
@@ -699,9 +750,9 @@ class _AccountSelector extends StatelessWidget {
                 AnimatedRotation(
                   turns: expanded ? 0.5 : 0,
                   duration: const Duration(milliseconds: 180),
-                  child: const Icon(
+                  child: Icon(
                     Icons.keyboard_arrow_down_rounded,
-                    color: Color(0xFF94A3B8),
+                    color: palette.secondaryText(isDark),
                   ),
                 ),
               ],
@@ -717,11 +768,15 @@ class _AccountDropdown extends StatelessWidget {
   final List<Map<String, dynamic>> accounts;
   final String? selectedAccountId;
   final ValueChanged<String> onSelected;
+  final bool isDark;
+  final AppPalette palette;
 
   const _AccountDropdown({
     required this.accounts,
     required this.selectedAccountId,
     required this.onSelected,
+    required this.isDark,
+    required this.palette,
   });
 
   IconData _getTypeIcon(String type) {
@@ -750,7 +805,7 @@ class _AccountDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(top: 8),
-      decoration: _fieldDecoration(),
+      decoration: _fieldDecoration(isDark, palette),
       child: Column(
         children: [
           for (final account in accounts)
@@ -762,7 +817,8 @@ class _AccountDropdown extends StatelessWidget {
               ),
               title: Text(
                 account['name']?.toString() ?? '',
-                style: const TextStyle(
+                style: TextStyle(
+                  color: palette.text(isDark),
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
@@ -772,7 +828,10 @@ class _AccountDropdown extends StatelessWidget {
                   RegExp(r'^\w'),
                   (m) => m.group(0)!.toUpperCase(),
                 ),
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: palette.secondaryText(isDark),
+                ),
               ),
               trailing: selectedAccountId == account['id']
                   ? const Icon(Icons.check_rounded, color: Color(0xFF6C63FF))
@@ -788,18 +847,22 @@ class _CategoryDropdown extends StatelessWidget {
   final List<String> categories;
   final String selected;
   final ValueChanged<String> onSelected;
+  final bool isDark;
+  final AppPalette palette;
 
   const _CategoryDropdown({
     required this.categories,
     required this.selected,
     required this.onSelected,
+    required this.isDark,
+    required this.palette,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(top: 8),
-      decoration: _fieldDecoration(),
+      decoration: _fieldDecoration(isDark, palette),
       child: Column(
         children: [
           for (final category in categories)
@@ -811,7 +874,8 @@ class _CategoryDropdown extends StatelessWidget {
               ),
               title: Text(
                 category,
-                style: const TextStyle(
+                style: TextStyle(
+                  color: palette.text(isDark),
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
@@ -831,12 +895,16 @@ class _TextBox extends StatelessWidget {
   final String hint;
   final int maxLines;
   final ValueChanged<String>? onChanged;
+  final bool isDark;
+  final AppPalette palette;
 
   const _TextBox({
     required this.controller,
     required this.hint,
     this.maxLines = 1,
     this.onChanged,
+    required this.isDark,
+    required this.palette,
   });
 
   @override
@@ -845,18 +913,21 @@ class _TextBox extends StatelessWidget {
       controller: controller,
       maxLines: maxLines,
       onChanged: onChanged,
-      style: const TextStyle(color: Color(0xFF1F2937), fontSize: 14),
+      style: TextStyle(color: palette.text(isDark), fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 14),
+        hintStyle: TextStyle(
+          color: palette.secondaryText(isDark),
+          fontSize: 14,
+        ),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: palette.cardColor(isDark),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 15,
         ),
-        border: _inputBorder(const Color(0xFFF1F5F9)),
-        enabledBorder: _inputBorder(const Color(0xFFF1F5F9)),
+        border: _inputBorder(palette.dividerColor(isDark)),
+        enabledBorder: _inputBorder(palette.dividerColor(isDark)),
         focusedBorder: _inputBorder(const Color(0xFFC4B5FD)),
       ),
     );
@@ -866,8 +937,15 @@ class _TextBox extends StatelessWidget {
 class _DateSelector extends StatelessWidget {
   final DateTime date;
   final VoidCallback onTap;
+  final bool isDark;
+  final AppPalette palette;
 
-  const _DateSelector({required this.date, required this.onTap});
+  const _DateSelector({
+    required this.date,
+    required this.onTap,
+    required this.isDark,
+    required this.palette,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -877,14 +955,14 @@ class _DateSelector extends StatelessWidget {
       borderRadius: BorderRadius.circular(18),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        decoration: _fieldDecoration(),
+        decoration: _fieldDecoration(isDark, palette),
         child: Row(
           children: [
             Expanded(
               child: Text(
                 value,
-                style: const TextStyle(
-                  color: Color(0xFF1F2937),
+                style: TextStyle(
+                  color: palette.text(isDark),
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
@@ -903,8 +981,11 @@ class _SuccessView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: palette.scaffoldBackground(isDark),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -925,18 +1006,21 @@ class _SuccessView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'Transaksi Disimpan!',
               style: TextStyle(
-                color: Color(0xFF1F2937),
+                color: palette.text(isDark),
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Kembali ke halaman sebelumnya...',
-              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+              style: TextStyle(
+                color: palette.secondaryText(isDark),
+                fontSize: 14,
+              ),
             ),
           ],
         ),
@@ -947,15 +1031,17 @@ class _SuccessView extends StatelessWidget {
 
 class _Label extends StatelessWidget {
   final String text;
+  final bool isDark;
+  final AppPalette palette;
 
-  const _Label(this.text);
+  const _Label(this.text, {required this.isDark, required this.palette});
 
   @override
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
-        color: Color(0xFF64748B),
+      style: TextStyle(
+        color: palette.secondaryText(isDark),
         fontSize: 12,
         fontWeight: FontWeight.w700,
       ),
@@ -963,14 +1049,14 @@ class _Label extends StatelessWidget {
   }
 }
 
-BoxDecoration _fieldDecoration() {
+BoxDecoration _fieldDecoration(bool isDark, AppPalette palette) {
   return BoxDecoration(
-    color: Colors.white,
+    color: palette.cardColor(isDark),
     borderRadius: BorderRadius.circular(18),
-    border: Border.all(color: const Color(0xFFF1F5F9)),
+    border: Border.all(color: palette.dividerColor(isDark)),
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withValues(alpha: 0.03),
+        color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.03),
         blurRadius: 16,
         offset: const Offset(0, 6),
       ),

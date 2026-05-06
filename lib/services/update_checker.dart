@@ -106,14 +106,18 @@ class UpdateChecker {
     try {
       final packageInfo = await getCurrentVersion();
       final currentVersion = packageInfo.version;
+      debugPrint('Current app version: $currentVersion');
 
       final response = await http.get(
         Uri.parse(_releasesApiUrl),
         headers: {'Accept': 'application/vnd.github.v3+json'},
       ).timeout(const Duration(seconds: 10));
 
+      debugPrint('GitHub API response status: ${response.statusCode}');
+
       if (response.statusCode != 200) {
         debugPrint('Failed to fetch releases: ${response.statusCode}');
+        debugPrint('Response body: ${response.body}');
         return UpdateInfo(
           hasUpdate: false,
           isForceUpdate: false,
@@ -126,6 +130,8 @@ class UpdateChecker {
           .map((json) => GitHubRelease.fromJson(json))
           .toList();
 
+      debugPrint('Found ${releases.length} releases');
+
       if (releases.isEmpty) {
         return UpdateInfo(
           hasUpdate: false,
@@ -137,8 +143,14 @@ class UpdateChecker {
 
       final latestRelease = releases.first;
       final latestVersion = latestRelease.tagName.replaceFirst('v', '').replaceFirst('V', '');
+      debugPrint('Latest release: $latestVersion (tag: ${latestRelease.tagName})');
+      debugPrint('APK URL: ${latestRelease.apkUrl}');
+      debugPrint('HTML URL: ${latestRelease.htmlUrl}');
+
       final hasUpdate = _parseVersion(latestVersion) > _parseVersion(currentVersion);
       final isForceUpdate = hasUpdate ? _isForceUpdate(currentVersion, latestVersion, latestRelease.body) : false;
+
+      debugPrint('Has update: $hasUpdate, Force update: $isForceUpdate');
 
       return UpdateInfo(
         hasUpdate: hasUpdate,

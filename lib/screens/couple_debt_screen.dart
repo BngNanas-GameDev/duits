@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../data/transactions.dart';
 import '../providers/couple_provider.dart';
+import '../providers/theme_provider.dart';
+import '../theme/palette.dart';
 
 class CoupleDebtScreen extends StatelessWidget {
   const CoupleDebtScreen({super.key});
@@ -12,39 +14,94 @@ class CoupleDebtScreen extends StatelessWidget {
     return Consumer<CoupleProvider>(
       builder: (context, couple, child) {
         return couple.isSetup
-            ? _Dashboard(couple: couple)
-            : const _SetupScreen();
+            ? const _Dashboard()
+            : const _SetupFlow();
       },
     );
   }
 }
 
-class _SetupScreen extends StatefulWidget {
-  const _SetupScreen();
+class _SetupFlow extends StatefulWidget {
+  const _SetupFlow();
 
   @override
-  State<_SetupScreen> createState() => _SetupScreenState();
+  State<_SetupFlow> createState() => _SetupFlowState();
 }
 
-class _SetupScreenState extends State<_SetupScreen> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _messageController = TextEditingController();
-
-  bool get _canSubmit => _emailController.text.trim().isNotEmpty;
+class _SetupFlowState extends State<_SetupFlow> {
+  int _step = 0;
+  String? _myGender;
+  String? _myDisplayName;
 
   @override
-  void dispose() {
-    _emailController.dispose();
-    _messageController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadName();
   }
+
+  Future<void> _loadName() async {
+    final name = await context.read<CoupleProvider>().loadMyProfileName();
+    if (mounted) {
+      setState(() => _myDisplayName = name);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
+
+    if (_step == 0) {
+      return _GenderSelectionScreen(
+        onComplete: (gender) {
+          setState(() {
+            _myGender = gender;
+            _step = 1;
+          });
+        },
+        isDark: isDark,
+        palette: palette,
+      );
+    }
+
+    final displayName = _myDisplayName ?? 'User';
+
+    return _InviteScreen(
+      myGender: _myGender!,
+      myDisplayName: displayName,
+      isDark: isDark,
+      palette: palette,
+    );
+  }
+}
+
+class _GenderSelectionScreen extends StatefulWidget {
+  final Function(String gender) onComplete;
+  final bool isDark;
+  final AppPalette palette;
+
+  const _GenderSelectionScreen({
+    required this.onComplete,
+    required this.isDark,
+    required this.palette,
+  });
+
+  @override
+  State<_GenderSelectionScreen> createState() => _GenderSelectionScreenState();
+}
+
+class _GenderSelectionScreenState extends State<_GenderSelectionScreen> {
+  String? _selectedGender;
+
+  bool get _canContinue => _selectedGender != null;
 
   @override
   Widget build(BuildContext context) {
     final couple = context.watch<CoupleProvider>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: widget.palette.scaffoldBackground(widget.isDark),
       body: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 104),
         child: Column(
@@ -52,11 +109,11 @@ class _SetupScreenState extends State<_SetupScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 56, 20, 40),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color(0xFF4F46E5), Color(0xFFEC4899)],
+                  colors: widget.palette.headerGradient(widget.isDark),
                 ),
               ),
               child: Column(
@@ -88,11 +145,11 @@ class _SetupScreenState extends State<_SetupScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Undang akun pasanganmu untuk mencatat hutang dari dua HP',
+                  Text(
+                    'Pilih gender kamu terlebih dahulu',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Color(0xFFFCE7F3),
+                      color: Colors.white.withValues(alpha: 0.8),
                       fontSize: 14,
                       height: 1.35,
                     ),
@@ -104,42 +161,233 @@ class _SetupScreenState extends State<_SetupScreen> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  _Card(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Undangan Masuk',
-                          style: TextStyle(
-                            color: Color(0xFF334155),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                          ),
+                  _GenderCard(
+                    icon: Icons.man_rounded,
+                    label: 'Cowok',
+                    isSelected: _selectedGender == 'male',
+                    genderColor: const Color(0xFF2196F3),
+                    onTap: () => setState(() => _selectedGender = 'male'),
+                    isDark: widget.isDark,
+                    palette: widget.palette,
+                  ),
+                  const SizedBox(height: 16),
+                  _GenderCard(
+                    icon: Icons.woman_rounded,
+                    label: 'Cewek',
+                    isSelected: _selectedGender == 'female',
+                    genderColor: const Color(0xFFEC4899),
+                    onTap: () => setState(() => _selectedGender = 'female'),
+                    isDark: widget.isDark,
+                    palette: widget.palette,
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: FilledButton.icon(
+                      onPressed: _canContinue
+                          ? () => widget.onComplete(_selectedGender!)
+                          : null,
+                      icon: const Icon(Icons.arrow_forward_rounded, size: 20),
+                      label: const Text(
+                        'Lanjut',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: widget.palette.primary,
+                        disabledBackgroundColor: const Color(0xFFE2E8F0),
+                        disabledForegroundColor: const Color(0xFF94A3B8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
                         ),
-                        const SizedBox(height: 16),
-                        if (couple.incomingInvitations.isEmpty)
-                          const Text(
-                            'Belum ada undangan pasangan.',
-                            style: TextStyle(
-                              color: Color(0xFF94A3B8),
-                              fontSize: 13,
-                            ),
-                          )
-                        else
-                          for (final invite in couple.incomingInvitations)
-                            _InvitationCard(invite: invite),
-                      ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  if (couple.errorMessage != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      couple.errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Color(0xFFFF6B6B),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GenderCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final Color genderColor;
+  final VoidCallback onTap;
+  final bool isDark;
+  final AppPalette palette;
+
+  const _GenderCard({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.genderColor,
+    required this.onTap,
+    required this.isDark,
+    required this.palette,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? genderColor.withValues(alpha: 0.12)
+              : palette.cardColor(isDark),
+          border: Border.all(
+            color: isSelected ? genderColor : palette.dividerColor(isDark),
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 48, color: isSelected ? genderColor : palette.secondaryText(isDark)),
+            const SizedBox(width: 16),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? genderColor : palette.text(isDark),
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InviteScreen extends StatefulWidget {
+  final String myGender;
+  final String myDisplayName;
+  final bool isDark;
+  final AppPalette palette;
+
+  const _InviteScreen({
+    required this.myGender,
+    required this.myDisplayName,
+    required this.isDark,
+    required this.palette,
+  });
+
+  @override
+  State<_InviteScreen> createState() => _InviteScreenState();
+}
+
+class _InviteScreenState extends State<_InviteScreen> {
+  final _emailController = TextEditingController();
+  final _messageController = TextEditingController();
+
+  bool get _canSubmit => _emailController.text.trim().isNotEmpty;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final couple = context.watch<CoupleProvider>();
+    final isMale = widget.myGender == 'male';
+    final genderColor = isMale
+        ? const Color(0xFF2196F3)
+        : const Color(0xFFEC4899);
+
+    return Scaffold(
+      backgroundColor: widget.palette.scaffoldBackground(widget.isDark),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 104),
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 56, 20, 40),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: widget.palette.headerGradient(widget.isDark),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: genderColor.withValues(alpha: 0.3),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: genderColor.withValues(alpha: 0.5),
+                        width: 2,
+                      ),
+                    ),
+                    child: Icon(
+                      isMale ? Icons.man_rounded : Icons.woman_rounded,
+                      color: genderColor,
+                      size: 40,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    widget.myDisplayName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isMale ? 'Cowok' : 'Cewek',
+                    style: TextStyle(
+                      color: genderColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
                   _Card(
+                    isDark: widget.isDark,
+                    palette: widget.palette,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Undang Pasangan',
                           style: TextStyle(
-                            color: Color(0xFF334155),
+                            color: widget.palette.text(widget.isDark),
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                           ),
@@ -151,6 +399,8 @@ class _SetupScreenState extends State<_SetupScreen> {
                           icon: Icons.mail_outline_rounded,
                           controller: _emailController,
                           onChanged: (_) => setState(() {}),
+                          isDark: widget.isDark,
+                          palette: widget.palette,
                         ),
                         const SizedBox(height: 12),
                         _PartnerNameField(
@@ -159,17 +409,33 @@ class _SetupScreenState extends State<_SetupScreen> {
                           icon: Icons.chat_bubble_outline_rounded,
                           controller: _messageController,
                           onChanged: (_) => setState(() {}),
+                          isDark: widget.isDark,
+                          palette: widget.palette,
                         ),
                         if (couple.hasPendingSentInvite) ...[
                           const SizedBox(height: 12),
                           Text(
                             'Menunggu persetujuan dari ${couple.sentInvitations.first.inviteeEmail}',
-                            style: const TextStyle(
-                              color: Color(0xFFEC4899),
+                            style: TextStyle(
+                              color: genderColor,
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
+                        ],
+                        if (couple.incomingInvitations.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            'Undangan Masuk',
+                            style: TextStyle(
+                              color: widget.palette.text(widget.isDark),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          for (final invite in couple.incomingInvitations)
+                            _InvitationCard(invite: invite, genderColor: genderColor),
                         ],
                       ],
                     ),
@@ -197,7 +463,7 @@ class _SetupScreenState extends State<_SetupScreen> {
                         style: TextStyle(fontWeight: FontWeight.w900),
                       ),
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFEC4899),
+                        backgroundColor: genderColor,
                         disabledBackgroundColor: const Color(0xFFE2E8F0),
                         disabledForegroundColor: const Color(0xFF94A3B8),
                         shape: RoundedRectangleBorder(
@@ -219,9 +485,12 @@ class _SetupScreenState extends State<_SetupScreen> {
                     ),
                   ],
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'Pasangan harus sudah punya akun Supabase di Duits',
-                    style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
+                    style: TextStyle(
+                      color: widget.palette.secondaryText(widget.isDark),
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -236,6 +505,7 @@ class _SetupScreenState extends State<_SetupScreen> {
     await context.read<CoupleProvider>().sendInvitation(
       _emailController.text.trim(),
       message: _messageController.text.trim(),
+      myGender: widget.myGender,
     );
     if (!context.mounted) return;
     final error = context.read<CoupleProvider>().errorMessage;
@@ -252,8 +522,9 @@ class _SetupScreenState extends State<_SetupScreen> {
 
 class _InvitationCard extends StatelessWidget {
   final CoupleInvitation invite;
+  final Color genderColor;
 
-  const _InvitationCard({required this.invite});
+  const _InvitationCard({required this.invite, required this.genderColor});
 
   @override
   Widget build(BuildContext context) {
@@ -261,25 +532,25 @@ class _InvitationCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFDF2F8),
-        border: Border.all(color: const Color(0xFFFBCFE8)),
+        color: genderColor.withValues(alpha: 0.08),
+        border: Border.all(color: genderColor.withValues(alpha: 0.2)),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Undangan dari',
             style: TextStyle(
-              color: Color(0xFF9D174D),
+              color: genderColor,
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
           ),
           Text(
             invite.inviterName,
-            style: const TextStyle(
-              color: Color(0xFF831843),
+            style: TextStyle(
+              color: genderColor,
               fontSize: 15,
               fontWeight: FontWeight.w900,
             ),
@@ -288,7 +559,7 @@ class _InvitationCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               invite.message,
-              style: const TextStyle(color: Color(0xFF9D174D), fontSize: 12),
+              style: TextStyle(color: genderColor.withValues(alpha: 0.8), fontSize: 12),
             ),
           ],
           const SizedBox(height: 12),
@@ -296,9 +567,7 @@ class _InvitationCard extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => context
-                      .read<CoupleProvider>()
-                      .rejectInvitation(invite.id),
+                  onPressed: () => context.read<CoupleProvider>().rejectInvitation(invite.id),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFFFF6B6B),
                     side: const BorderSide(color: Color(0xFFFCA5A5)),
@@ -309,11 +578,9 @@ class _InvitationCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: FilledButton(
-                  onPressed: () => context
-                      .read<CoupleProvider>()
-                      .acceptInvitation(invite.id),
+                  onPressed: () => context.read<CoupleProvider>().acceptInvitation(invite.id),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFEC4899),
+                    backgroundColor: genderColor,
                   ),
                   child: const Text('Terima'),
                 ),
@@ -327,24 +594,26 @@ class _InvitationCard extends StatelessWidget {
 }
 
 class _Dashboard extends StatelessWidget {
-  final CoupleProvider couple;
-
-  const _Dashboard({required this.couple});
+  const _Dashboard();
 
   @override
   Widget build(BuildContext context) {
+    final couple = context.watch<CoupleProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
     final absBalance = couple.netBalance.abs();
     final isEven = couple.netBalance == 0;
     final payer = couple.netBalance > 0 ? couple.partnerB : couple.partnerA;
     final receiver = couple.netBalance > 0 ? couple.partnerA : couple.partnerB;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: palette.scaffoldBackground(isDark),
       body: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 104),
         child: Column(
           children: [
-            _DashboardHeader(couple: couple),
+            _DashboardHeader(couple: couple, isDark: isDark, palette: palette),
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -355,6 +624,8 @@ class _Dashboard extends StatelessWidget {
                     absBalance: absBalance,
                     payer: payer,
                     receiver: receiver,
+                    isDark: isDark,
+                    palette: palette,
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -364,10 +635,12 @@ class _Dashboard extends StatelessWidget {
                         child: _PartnerColumn(
                           partner: couple.partnerA,
                           total: couple.totalA,
-                          accentColor: const Color(0xFF6C63FF),
+                          accentColor: couple.getGenderColor(couple.partnerA.gender),
                           isOwing: couple.netBalance < 0,
                           owingAmount: absBalance,
                           canAdd: couple.myPartnerKey == couple.partnerA.id,
+                          isDark: isDark,
+                          palette: palette,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -375,10 +648,12 @@ class _Dashboard extends StatelessWidget {
                         child: _PartnerColumn(
                           partner: couple.partnerB,
                           total: couple.totalB,
-                          accentColor: const Color(0xFFEC4899),
+                          accentColor: couple.getGenderColor(couple.partnerB.gender),
                           isOwing: couple.netBalance > 0,
                           owingAmount: absBalance,
                           canAdd: couple.myPartnerKey == couple.partnerB.id,
+                          isDark: isDark,
+                          palette: palette,
                         ),
                       ),
                     ],
@@ -387,14 +662,14 @@ class _Dashboard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F7FF),
-                      border: Border.all(color: const Color(0xFFE0D9FF)),
+                      color: palette.cardColor(isDark),
+                      border: Border.all(color: palette.dividerColor(isDark)),
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: Text(
-                      'Cara kerja: hutang ${couple.partnerA.name} dikurangi hutang ${couple.partnerB.name}. Jika hasilnya positif, ${couple.partnerB.name} membayar ke ${couple.partnerA.name}; jika negatif, sebaliknya.',
-                      style: const TextStyle(
-                        color: Color(0xFF64748B),
+                      'Cara kerja: Setiap partner mencatat hutangnya sendiri. Selisih total menentukan siapa yang membayar ke siapa.',
+                      style: TextStyle(
+                        color: palette.secondaryText(isDark),
                         fontSize: 12,
                         height: 1.45,
                       ),
@@ -412,19 +687,25 @@ class _Dashboard extends StatelessWidget {
 
 class _DashboardHeader extends StatelessWidget {
   final CoupleProvider couple;
+  final bool isDark;
+  final AppPalette palette;
 
-  const _DashboardHeader({required this.couple});
+  const _DashboardHeader({
+    required this.couple,
+    required this.isDark,
+    required this.palette,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 52, 20, 24),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF4F46E5), Color(0xFFEC4899)],
+          colors: palette.headerGradient(isDark),
         ),
       ),
       child: Row(
@@ -444,8 +725,8 @@ class _DashboardHeader extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${couple.partnerA.name} & ${couple.partnerB.name}',
-                  style: const TextStyle(
-                    color: Color(0xFFFCE7F3),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 12,
                   ),
                 ),
@@ -456,7 +737,7 @@ class _DashboardHeader extends StatelessWidget {
             onPressed: () => _confirmReset(context),
             style: TextButton.styleFrom(
               backgroundColor: Colors.white.withValues(alpha: 0.15),
-              foregroundColor: const Color(0xFFFCE7F3),
+              foregroundColor: Colors.white.withValues(alpha: 0.8),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(999),
@@ -502,6 +783,8 @@ class _BalanceCard extends StatelessWidget {
   final double absBalance;
   final Partner payer;
   final Partner receiver;
+  final bool isDark;
+  final AppPalette palette;
 
   const _BalanceCard({
     required this.couple,
@@ -509,6 +792,8 @@ class _BalanceCard extends StatelessWidget {
     required this.absBalance,
     required this.payer,
     required this.receiver,
+    required this.isDark,
+    required this.palette,
   });
 
   @override
@@ -529,10 +814,10 @@ class _BalanceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Perhitungan Hutang Bersih',
             style: TextStyle(
-              color: Color(0xFF94A3B8),
+              color: palette.secondaryText(isDark),
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
@@ -544,19 +829,23 @@ class _BalanceCard extends StatelessWidget {
                 child: _FormulaBox(
                   label: couple.partnerA.name,
                   value: formatRupiah(couple.totalA),
+                  isDark: isDark,
+                  palette: palette,
                 ),
               ),
               const SizedBox(width: 8),
-              _OperatorBox('-'),
+              const _OperatorBox('-'),
               const SizedBox(width: 8),
               Expanded(
                 child: _FormulaBox(
                   label: couple.partnerB.name,
                   value: formatRupiah(couple.totalB),
+                  isDark: isDark,
+                  palette: palette,
                 ),
               ),
               const SizedBox(width: 8),
-              _OperatorBox('='),
+              const _OperatorBox('='),
               const SizedBox(width: 8),
               Expanded(
                 child: _FormulaBox(
@@ -564,6 +853,8 @@ class _BalanceCard extends StatelessWidget {
                   value: formatRupiah(absBalance),
                   color: statusColor,
                   tinted: true,
+                  isDark: isDark,
+                  palette: palette,
                 ),
               ),
             ],
@@ -575,12 +866,17 @@ class _BalanceCard extends StatelessWidget {
               color: const Color(0xFF00C48C),
               title: 'Hutang Seimbang!',
               subtitle: 'Tidak ada yang perlu dibayar saat ini',
+              isDark: isDark,
+              palette: palette,
             )
           else
             _PaymentResult(
               payer: payer,
               receiver: receiver,
               amount: absBalance,
+              isDark: isDark,
+              palette: palette,
+              couple: couple,
             ),
         ],
       ),
@@ -595,6 +891,8 @@ class _PartnerColumn extends StatelessWidget {
   final bool isOwing;
   final double owingAmount;
   final bool canAdd;
+  final bool isDark;
+  final AppPalette palette;
 
   const _PartnerColumn({
     required this.partner,
@@ -603,6 +901,8 @@ class _PartnerColumn extends StatelessWidget {
     required this.isOwing,
     required this.owingAmount,
     required this.canAdd,
+    required this.isDark,
+    required this.palette,
   });
 
   @override
@@ -639,10 +939,10 @@ class _PartnerColumn extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Hutang',
                           style: TextStyle(
-                            color: Color(0xFF94A3B8),
+                            color: palette.secondaryText(isDark),
                             fontSize: 11,
                           ),
                         ),
@@ -650,8 +950,8 @@ class _PartnerColumn extends StatelessWidget {
                           partner.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF1F2937),
+                          style: TextStyle(
+                            color: palette.text(isDark),
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
                           ),
@@ -674,7 +974,7 @@ class _PartnerColumn extends StatelessWidget {
               ),
               Text(
                 '${partner.debts.length} catatan hutang',
-                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10),
+                style: TextStyle(color: palette.secondaryText(isDark), fontSize: 10),
               ),
               if (isOwing && owingAmount > 0) ...[
                 const SizedBox(height: 8),
@@ -721,15 +1021,15 @@ class _PartnerColumn extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: palette.cardColor(isDark),
               border: Border.all(color: accentColor.withValues(alpha: 0.14)),
               borderRadius: BorderRadius.circular(18),
             ),
-            child: const Text(
+            child: Text(
               'Dicatat oleh pasangan',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFF94A3B8),
+                color: palette.secondaryText(isDark),
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -741,28 +1041,33 @@ class _PartnerColumn extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: palette.cardColor(isDark),
               border: Border.all(
                 color: accentColor.withValues(alpha: 0.18),
                 style: BorderStyle.solid,
               ),
               borderRadius: BorderRadius.circular(18),
             ),
-            child: const Column(
+            child: Column(
               children: [
-                Icon(Icons.payments_rounded, color: Color(0xFFCBD5E1)),
-                SizedBox(height: 5),
+                Icon(Icons.payments_rounded, color: palette.secondaryText(isDark)),
+                const SizedBox(height: 5),
                 Text(
                   'Belum ada hutang',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                  style: TextStyle(color: palette.secondaryText(isDark), fontSize: 12),
                 ),
               ],
             ),
           )
         else
           ...sortedDebts.map(
-            (debt) => _DebtItem(debt: debt, accentColor: accentColor),
+            (debt) => _DebtItem(
+              debt: debt,
+              accentColor: accentColor,
+              isDark: isDark,
+              palette: palette,
+            ),
           ),
       ],
     );
@@ -773,16 +1078,23 @@ class _PartnerColumn extends StatelessWidget {
     Partner partner,
     Color accentColor,
   ) {
+    final couple = context.read<CoupleProvider>();
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: palette.cardColor(isDark),
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (sheetContext) =>
-          _AddDebtSheet(partner: partner, accentColor: accentColor),
+          _AddDebtSheet(
+            partner: partner,
+            accentColor: accentColor,
+            myPartnerKey: couple.myPartnerKey,
+            isDark: isDark,
+            palette: palette,
+          ),
     );
   }
 }
@@ -790,8 +1102,17 @@ class _PartnerColumn extends StatelessWidget {
 class _AddDebtSheet extends StatefulWidget {
   final Partner partner;
   final Color accentColor;
+  final String myPartnerKey;
+  final bool isDark;
+  final AppPalette palette;
 
-  const _AddDebtSheet({required this.partner, required this.accentColor});
+  const _AddDebtSheet({
+    required this.partner,
+    required this.accentColor,
+    required this.myPartnerKey,
+    required this.isDark,
+    required this.palette,
+  });
 
   @override
   State<_AddDebtSheet> createState() => _AddDebtSheetState();
@@ -803,9 +1124,12 @@ class _AddDebtSheetState extends State<_AddDebtSheet> {
   final TextEditingController _noteController = TextEditingController();
   DateTime _date = DateTime.now();
   String _amountRaw = '';
+  String _ownerKey = '';
 
   bool get _canSubmit =>
-      _descriptionController.text.trim().isNotEmpty && _amountRaw.isNotEmpty;
+      _descriptionController.text.trim().isNotEmpty &&
+      _amountRaw.isNotEmpty &&
+      _ownerKey.isNotEmpty;
 
   @override
   void dispose() {
@@ -842,17 +1166,17 @@ class _AddDebtSheetState extends State<_AddDebtSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Tambah hutang untuk',
                           style: TextStyle(
-                            color: Color(0xFF94A3B8),
+                            color: widget.palette.secondaryText(widget.isDark),
                             fontSize: 12,
                           ),
                         ),
                         Text(
                           widget.partner.name,
-                          style: const TextStyle(
-                            color: Color(0xFF1F2937),
+                          style: TextStyle(
+                            color: widget.palette.text(widget.isDark),
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                           ),
@@ -863,27 +1187,66 @@ class _AddDebtSheetState extends State<_AddDebtSheet> {
                 ],
               ),
               const SizedBox(height: 18),
-              _SheetLabel('Nama / Keterangan Hutang'),
+              Text(
+                'Hutang siapa?',
+                style: TextStyle(
+                  color: widget.palette.secondaryText(widget.isDark),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _DebtOwnerButton(
+                      label: 'Hutang saya',
+                      isSelected: _ownerKey == widget.myPartnerKey,
+                      onTap: () => setState(() => _ownerKey = widget.myPartnerKey),
+                      isDark: widget.isDark,
+                      palette: widget.palette,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _DebtOwnerButton(
+                      label: 'Hutang ${widget.partner.name}',
+                      isSelected: _ownerKey == widget.partner.id,
+                      onTap: () => setState(() => _ownerKey = widget.partner.id),
+                      isDark: widget.isDark,
+                      palette: widget.palette,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              _SheetLabel('Nama / Keterangan Hutang', isDark: widget.isDark, palette: widget.palette),
               _SheetField(
                 controller: _descriptionController,
                 hint: 'Contoh: Bayar makan malam',
                 onChanged: (_) => setState(() {}),
+                isDark: widget.isDark,
+                palette: widget.palette,
               ),
-              _SheetLabel('Jumlah'),
+              _SheetLabel('Jumlah', isDark: widget.isDark, palette: widget.palette),
               _SheetField(
                 controller: _amountController,
                 hint: '0',
                 prefixText: 'Rp ',
                 keyboardType: TextInputType.number,
                 onChanged: _handleAmountChange,
+                isDark: widget.isDark,
+                palette: widget.palette,
               ),
-              _SheetLabel('Detail / Catatan (opsional)'),
+              _SheetLabel('Detail / Catatan (opsional)', isDark: widget.isDark, palette: widget.palette),
               _SheetField(
                 controller: _noteController,
                 hint: 'Tambahkan detail hutang...',
                 maxLines: 3,
+                isDark: widget.isDark,
+                palette: widget.palette,
               ),
-              _SheetLabel('Tanggal'),
+              _SheetLabel('Tanggal', isDark: widget.isDark, palette: widget.palette),
               InkWell(
                 onTap: _selectDate,
                 borderRadius: BorderRadius.circular(18),
@@ -893,11 +1256,19 @@ class _AddDebtSheetState extends State<_AddDebtSheet> {
                     horizontal: 16,
                     vertical: 14,
                   ),
-                  decoration: _sheetFieldDecoration(),
+                  decoration: BoxDecoration(
+                    color: widget.palette.cardColor(widget.isDark),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text(_date.toIso8601String().split('T').first),
+                        child: Text(
+                          _date.toIso8601String().split('T').first,
+                          style: TextStyle(
+                            color: widget.palette.text(widget.isDark),
+                          ),
+                        ),
                       ),
                       Icon(
                         Icons.calendar_month_rounded,
@@ -962,7 +1333,7 @@ class _AddDebtSheetState extends State<_AddDebtSheet> {
 
   void _submit() {
     context.read<CoupleProvider>().addDebt(
-      targetUserId: widget.partner.id,
+      ownerKey: _ownerKey,
       description: _descriptionController.text.trim(),
       amount: double.parse(_amountRaw),
       note: _noteController.text.trim(),
@@ -972,11 +1343,64 @@ class _AddDebtSheetState extends State<_AddDebtSheet> {
   }
 }
 
+class _DebtOwnerButton extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final bool isDark;
+  final AppPalette palette;
+
+  const _DebtOwnerButton({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    required this.isDark,
+    required this.palette,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF6C63FF).withValues(alpha: 0.12)
+              : palette.cardColor(isDark),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF6C63FF) : palette.dividerColor(isDark),
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: isSelected ? const Color(0xFF6C63FF) : palette.text(isDark),
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _DebtItem extends StatefulWidget {
   final DebtEntry debt;
   final Color accentColor;
+  final bool isDark;
+  final AppPalette palette;
 
-  const _DebtItem({required this.debt, required this.accentColor});
+  const _DebtItem({
+    required this.debt,
+    required this.accentColor,
+    required this.isDark,
+    required this.palette,
+  });
 
   @override
   State<_DebtItem> createState() => _DebtItemState();
@@ -990,7 +1414,7 @@ class _DebtItemState extends State<_DebtItem> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: widget.palette.cardColor(widget.isDark),
         border: Border.all(color: widget.accentColor.withValues(alpha: 0.12)),
         borderRadius: BorderRadius.circular(18),
       ),
@@ -1030,16 +1454,16 @@ class _DebtItemState extends State<_DebtItem> {
                           widget.debt.description,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF1F2937),
+                          style: TextStyle(
+                            color: widget.palette.text(widget.isDark),
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                         Text(
                           formatDate(widget.debt.date),
-                          style: const TextStyle(
-                            color: Color(0xFF94A3B8),
+                          style: TextStyle(
+                            color: widget.palette.secondaryText(widget.isDark),
                             fontSize: 10,
                           ),
                         ),
@@ -1058,9 +1482,9 @@ class _DebtItemState extends State<_DebtItem> {
                   AnimatedRotation(
                     turns: _expanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 180),
-                    child: const Icon(
+                    child: Icon(
                       Icons.keyboard_arrow_down_rounded,
-                      color: Color(0xFF94A3B8),
+                      color: widget.palette.secondaryText(widget.isDark),
                       size: 18,
                     ),
                   ),
@@ -1079,13 +1503,13 @@ class _DebtItemState extends State<_DebtItem> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
+                        color: widget.palette.scaffoldBackground(widget.isDark),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Text(
                         widget.debt.note,
-                        style: const TextStyle(
-                          color: Color(0xFF64748B),
+                        style: TextStyle(
+                          color: widget.palette.secondaryText(widget.isDark),
                           fontSize: 12,
                         ),
                       ),
@@ -1114,28 +1538,37 @@ class _PaymentResult extends StatelessWidget {
   final Partner payer;
   final Partner receiver;
   final double amount;
+  final bool isDark;
+  final AppPalette palette;
+  final CoupleProvider couple;
 
   const _PaymentResult({
     required this.payer,
     required this.receiver,
     required this.amount,
+    required this.isDark,
+    required this.palette,
+    required this.couple,
   });
 
   @override
   Widget build(BuildContext context) {
+    final payerColor = couple.getGenderColor(payer.gender);
+    final receiverColor = couple.getGenderColor(receiver.gender);
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.cardColor(isDark),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Yang harus membayar:',
             style: TextStyle(
-              color: Color(0xFF94A3B8),
+              color: palette.secondaryText(isDark),
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
@@ -1143,7 +1576,7 @@ class _PaymentResult extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              _AvatarIcon(partner: payer, color: const Color(0xFFFF6B6B)),
+              _AvatarIcon(partner: payer, color: payerColor),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -1151,16 +1584,16 @@ class _PaymentResult extends StatelessWidget {
                   children: [
                     Text(
                       payer.name,
-                      style: const TextStyle(
-                        color: Color(0xFF1F2937),
+                      style: TextStyle(
+                        color: palette.text(isDark),
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
                     Text(
                       'membayar ke ${receiver.name}',
-                      style: const TextStyle(
-                        color: Color(0xFF94A3B8),
+                      style: TextStyle(
+                        color: palette.secondaryText(isDark),
                         fontSize: 12,
                       ),
                     ),
@@ -1169,7 +1602,7 @@ class _PaymentResult extends StatelessWidget {
               ),
               const Icon(Icons.arrow_forward_rounded, color: Color(0xFFFF6B6B)),
               const SizedBox(width: 10),
-              _AvatarIcon(partner: receiver, color: const Color(0xFF6C63FF)),
+              _AvatarIcon(partner: receiver, color: receiverColor),
             ],
           ),
           const SizedBox(height: 12),
@@ -1182,9 +1615,9 @@ class _PaymentResult extends StatelessWidget {
             ),
             child: Column(
               children: [
-                const Text(
+                Text(
                   'Total yang harus dibayar',
-                  style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                  style: TextStyle(color: palette.secondaryText(isDark), fontSize: 12),
                 ),
                 Text(
                   formatRupiah(amount),
@@ -1208,12 +1641,16 @@ class _FormulaBox extends StatelessWidget {
   final String value;
   final Color? color;
   final bool tinted;
+  final bool isDark;
+  final AppPalette palette;
 
   const _FormulaBox({
     required this.label,
     required this.value,
     this.color,
     this.tinted = false,
+    required this.isDark,
+    required this.palette,
   });
 
   @override
@@ -1221,7 +1658,7 @@ class _FormulaBox extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
-        color: tinted ? color!.withValues(alpha: 0.12) : Colors.white,
+        color: tinted ? color!.withValues(alpha: 0.12) : palette.cardColor(isDark),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -1230,14 +1667,14 @@ class _FormulaBox extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10),
+            style: TextStyle(color: palette.secondaryText(isDark), fontSize: 10),
           ),
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: color ?? const Color(0xFF1F2937),
+              color: color ?? palette.text(isDark),
               fontSize: 12,
               fontWeight: FontWeight.w900,
             ),
@@ -1280,12 +1717,16 @@ class _ResultBox extends StatelessWidget {
   final Color color;
   final String title;
   final String subtitle;
+  final bool isDark;
+  final AppPalette palette;
 
   const _ResultBox({
     required this.icon,
     required this.color,
     required this.title,
     required this.subtitle,
+    required this.isDark,
+    required this.palette,
   });
 
   @override
@@ -1293,7 +1734,7 @@ class _ResultBox extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.cardColor(isDark),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
@@ -1314,8 +1755,8 @@ class _ResultBox extends StatelessWidget {
                 ),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    color: Color(0xFF94A3B8),
+                  style: TextStyle(
+                    color: palette.secondaryText(isDark),
                     fontSize: 12,
                   ),
                 ),
@@ -1354,6 +1795,8 @@ class _PartnerNameField extends StatelessWidget {
   final IconData icon;
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
+  final bool isDark;
+  final AppPalette palette;
 
   const _PartnerNameField({
     required this.label,
@@ -1361,6 +1804,8 @@ class _PartnerNameField extends StatelessWidget {
     required this.icon,
     required this.controller,
     required this.onChanged,
+    required this.isDark,
+    required this.palette,
   });
 
   @override
@@ -1370,8 +1815,8 @@ class _PartnerNameField extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF94A3B8),
+          style: TextStyle(
+            color: palette.secondaryText(isDark),
             fontSize: 12,
             fontWeight: FontWeight.w700,
           ),
@@ -1380,14 +1825,35 @@ class _PartnerNameField extends StatelessWidget {
         TextField(
           controller: controller,
           onChanged: onChanged,
+          style: TextStyle(color: palette.text(isDark)),
           decoration: InputDecoration(
             hintText: hint,
-            prefixIcon: Icon(icon, color: const Color(0xFF6C63FF)),
+            hintStyle: TextStyle(color: palette.secondaryText(isDark)),
+            prefixIcon: Icon(icon, color: palette.primary),
             filled: true,
-            fillColor: const Color(0xFFF8FAFC),
+            fillColor: isDark
+                ? palette.scaffoldBackgroundDark
+                : Colors.white,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(18),
-              borderSide: BorderSide.none,
+              borderSide: BorderSide(
+                color: palette.dividerColor(isDark),
+                width: 1,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide(
+                color: palette.dividerColor(isDark),
+                width: 1,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide(
+                color: palette.primary,
+                width: 2,
+              ),
             ),
           ),
         ),
@@ -1398,8 +1864,10 @@ class _PartnerNameField extends StatelessWidget {
 
 class _SheetLabel extends StatelessWidget {
   final String text;
+  final bool isDark;
+  final AppPalette palette;
 
-  const _SheetLabel(this.text);
+  const _SheetLabel(this.text, {required this.isDark, required this.palette});
 
   @override
   Widget build(BuildContext context) {
@@ -1407,8 +1875,8 @@ class _SheetLabel extends StatelessWidget {
       padding: const EdgeInsets.only(top: 14, bottom: 7),
       child: Text(
         text,
-        style: const TextStyle(
-          color: Color(0xFF94A3B8),
+        style: TextStyle(
+          color: palette.secondaryText(isDark),
           fontSize: 12,
           fontWeight: FontWeight.w700,
         ),
@@ -1424,6 +1892,8 @@ class _SheetField extends StatelessWidget {
   final String? prefixText;
   final TextInputType? keyboardType;
   final ValueChanged<String>? onChanged;
+  final bool isDark;
+  final AppPalette palette;
 
   const _SheetField({
     required this.controller,
@@ -1432,6 +1902,8 @@ class _SheetField extends StatelessWidget {
     this.prefixText,
     this.keyboardType,
     this.onChanged,
+    required this.isDark,
+    required this.palette,
   });
 
   @override
@@ -1441,11 +1913,12 @@ class _SheetField extends StatelessWidget {
       maxLines: maxLines,
       keyboardType: keyboardType,
       onChanged: onChanged,
+      style: TextStyle(color: palette.text(isDark)),
       decoration: InputDecoration(
         hintText: hint,
         prefixText: prefixText,
         filled: true,
-        fillColor: const Color(0xFFF8FAFC),
+        fillColor: palette.cardColor(isDark),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
@@ -1457,8 +1930,14 @@ class _SheetField extends StatelessWidget {
 
 class _Card extends StatelessWidget {
   final Widget child;
+  final bool isDark;
+  final AppPalette palette;
 
-  const _Card({required this.child});
+  const _Card({
+    required this.child,
+    required this.isDark,
+    required this.palette,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1466,11 +1945,11 @@ class _Card extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.cardColor(isDark),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -1479,11 +1958,4 @@ class _Card extends StatelessWidget {
       child: child,
     );
   }
-}
-
-BoxDecoration _sheetFieldDecoration() {
-  return BoxDecoration(
-    color: const Color(0xFFF8FAFC),
-    borderRadius: BorderRadius.circular(18),
-  );
 }

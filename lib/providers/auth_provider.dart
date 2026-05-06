@@ -340,6 +340,15 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateUserName(String newName) async {
+    if (_user == null) return;
+    await _supabase.auth.updateUser(
+      UserAttributes(data: {'name': newName}),
+    );
+    _user = _supabase.auth.currentUser;
+    notifyListeners();
+  }
+
   Future<void> resetAuth() async {
     final currentUserId = _user?.id;
     if (currentUserId != null) {

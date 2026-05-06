@@ -1,16 +1,19 @@
+import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 import '../services/update_checker.dart';
 import '../theme/palette.dart';
 
 class UpdateDialog extends StatefulWidget {
   final UpdateInfo updateInfo;
-  final VoidCallback? onDismiss;
+  final VoidCallback? onSkip;
 
   const UpdateDialog({
     super.key,
     required this.updateInfo,
-    this.onDismiss,
+    this.onSkip,
   });
 
   @override
@@ -19,32 +22,97 @@ class UpdateDialog extends StatefulWidget {
 
 class _UpdateDialogState extends State<UpdateDialog> {
   bool _isDownloading = false;
+  double _downloadProgress = 0;
+  bool _downloadComplete = false;
 
   Future<void> _downloadUpdate() async {
     if (!mounted) return;
-
-    setState(() {
-      _isDownloading = true;
-    });
 
     final release = widget.updateInfo.latestRelease;
     if (release == null) return;
 
     final url = release.apkUrl.isNotEmpty ? release.apkUrl : release.htmlUrl;
-    final uri = Uri.parse(url);
+    debugPrint('APK download URL: $url');
 
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (url.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Link download tidak tersedia.'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
-    } catch (e) {
-      debugPrint('Failed to launch URL: $e');
+      return;
     }
 
-    if (mounted) {
+    try {
+      if (!mounted) return;
+      setState(() {
+        _isDownloading = true;
+        _downloadProgress = 0;
+      });
+
+      final dir = await getExternalStorageDirectory();
+      if (dir == null) {
+        debugPrint('Could not get storage directory');
+        if (mounted) setState(() => _isDownloading = false);
+        return;
+      }
+
+      final savePath = '${dir.path}/duits_update.apk';
+      debugPrint('Downloading APK to: $savePath');
+
+      final dio = Dio();
+      await dio.download(
+        url,
+        savePath,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            final progress = received / total;
+            debugPrint('Download progress: ${(progress * 100).toStringAsFixed(1)}%');
+            if (mounted) {
+              setState(() {
+                _downloadProgress = progress;
+              });
+            }
+          }
+        },
+        options: Options(
+          headers: {'Accept': 'application/vnd.android.package-archive'},
+        ),
+      );
+
+      debugPrint('Download completed, file size: ${File(savePath).lengthSync()} bytes');
+
+      if (!mounted) return;
       setState(() {
         _isDownloading = false;
+        _downloadComplete = true;
       });
+
+      final result = await OpenFilex.open(savePath);
+      debugPrint('Open file result: ${result.type} - ${result.message}');
+
+      if (result.type != ResultType.done && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal membuka installer: ${result.message}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Download/install error: $e');
+      if (mounted) {
+        setState(() => _isDownloading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Download gagal: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -206,45 +274,69 @@ class _UpdateDialogState extends State<UpdateDialog> {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                 child: Column(
                   children: [
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton.icon(
-                        onPressed: _isDownloading ? null : _downloadUpdate,
-                        icon: _isDownloading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.download_rounded),
-                        label: Text(
-                          widget.updateInfo.isForceUpdate
-                              ? 'Download & Update Sekarang'
-                              : 'Download Update',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                          ),
+                    if (_isDownloading) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: Column(
+                          children: [
+                            LinearProgressIndicator(
+                              value: _downloadProgress,
+                              backgroundColor: palette.primary.withValues(alpha: 0.15),
+                              color: palette.primary,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Downloading... ${(_downloadProgress * 100).toStringAsFixed(0)}%',
+                              style: TextStyle(
+                                color: palette.secondaryText(isDark),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: palette.primary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                      ),
+                    ] else ...[
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          onPressed: _downloadUpdate,
+                          icon: _downloadComplete
+                              ? const Icon(Icons.check_circle_rounded)
+                              : const Icon(Icons.download_rounded),
+                          label: Text(
+                            _downloadComplete ? 'Install Update' : 'Download & Install',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: palette.primary,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    if (!widget.updateInfo.isForceUpdate) ...[
+                    ],
+                      if (!widget.updateInfo.isForceUpdate) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        'Jika gagal install, hapus aplikasi lama terlebih dahulu lalu install APK ini.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: palette.secondaryText(isDark),
+                          fontSize: 11,
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       TextButton(
                         onPressed: () {
-                          widget.onDismiss?.call();
-                          Navigator.of(context).pop();
+                          widget.onSkip?.call();
                         },
                         child: Text(
                           'Nanti Saja',

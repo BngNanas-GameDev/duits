@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../data/transactions.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/theme_provider.dart';
+import '../theme/palette.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -31,6 +33,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   @override
   Widget build(BuildContext context) {
     final transactionProvider = context.watch<TransactionProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
     final sorted = transactionProvider.sortedTransactions;
 
     final filtered = sorted.where((tx) {
@@ -57,7 +62,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         .fold<double>(0, (sum, tx) => sum + tx.amount);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: palette.scaffoldBackground(isDark),
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -65,6 +70,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               totalIncome: totalIncome,
               totalExpense: totalExpense,
               count: filtered.length,
+              isDark: isDark,
+              palette: palette,
             ),
           ),
           SliverPadding(
@@ -76,6 +83,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   onSearch: (value) => setState(() => _search = value),
                   onToggleFilter: () =>
                       setState(() => _showFilter = !_showFilter),
+                  isDark: isDark,
+                  palette: palette,
                 ),
                 if (_showFilter) ...[
                   const SizedBox(height: 12),
@@ -86,17 +95,21 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     onFilterChanged: (value) => setState(() => _filter = value),
                     onCategoryChanged: (value) =>
                         setState(() => _selectedCategory = value),
+                    isDark: isDark,
+                    palette: palette,
                   ),
                 ],
                 const SizedBox(height: 14),
                 if (grouped.isEmpty)
-                  const _EmptyState()
+                  _EmptyState(isDark: isDark, palette: palette)
                 else
                   ...grouped.entries.map(
                     (entry) => _DateGroup(
                       date: entry.key,
                       transactions: entry.value,
                       onSelect: _showDetail,
+                      isDark: isDark,
+                      palette: palette,
                     ),
                   ),
               ]),
@@ -108,15 +121,18 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   void _showDetail(Transaction tx) {
+    final themeProvider = context.read<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+    final palette = themeProvider.palette;
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: palette.cardColor(isDark),
       showDragHandle: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (sheetContext) => _DetailSheet(tx: tx, pageContext: context),
+      builder: (sheetContext) => _DetailSheet(tx: tx, pageContext: context, isDark: isDark, palette: palette),
     );
   }
 }
@@ -125,22 +141,27 @@ class _Header extends StatelessWidget {
   final double totalIncome;
   final double totalExpense;
   final int count;
+  final bool isDark;
+  final AppPalette palette;
 
   const _Header({
     required this.totalIncome,
     required this.totalExpense,
     required this.count,
+    required this.isDark,
+    required this.palette,
   });
 
   @override
   Widget build(BuildContext context) {
+    final gradientColors = palette.headerGradient(isDark);
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 52, 20, 22),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+          colors: gradientColors,
         ),
       ),
       child: Column(
@@ -156,7 +177,7 @@ class _Header extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              const Text(
+              Text(
                 'Riwayat Transaksi',
                 style: TextStyle(
                   color: Colors.white,
@@ -235,11 +256,15 @@ class _SearchBar extends StatelessWidget {
   final bool showFilter;
   final ValueChanged<String> onSearch;
   final VoidCallback onToggleFilter;
+  final bool isDark;
+  final AppPalette palette;
 
   const _SearchBar({
     required this.showFilter,
     required this.onSearch,
     required this.onToggleFilter,
+    required this.isDark,
+    required this.palette,
   });
 
   @override
@@ -249,30 +274,31 @@ class _SearchBar extends StatelessWidget {
         Expanded(
           child: TextField(
             onChanged: onSearch,
+            style: TextStyle(color: palette.text(isDark)),
             decoration: InputDecoration(
               hintText: 'Cari transaksi...',
-              hintStyle: const TextStyle(
-                color: Color(0xFFCBD5E1),
+              hintStyle: TextStyle(
+                color: palette.secondaryText(isDark),
                 fontSize: 14,
               ),
-              prefixIcon: const Icon(
+              prefixIcon: Icon(
                 Icons.search_rounded,
-                color: Color(0xFF94A3B8),
+                color: palette.secondaryText(isDark),
                 size: 20,
               ),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: palette.cardColor(isDark),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 14,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(18),
-                borderSide: const BorderSide(color: Color(0xFFF1F5F9)),
+                borderSide: BorderSide(color: palette.dividerColor(isDark)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(18),
-                borderSide: const BorderSide(color: Color(0xFFF1F5F9)),
+                borderSide: BorderSide(color: palette.dividerColor(isDark)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(18),
@@ -294,10 +320,10 @@ class _SearchBar extends StatelessWidget {
             style: IconButton.styleFrom(
               backgroundColor: showFilter
                   ? const Color(0xFF6C63FF)
-                  : Colors.white,
+                  : palette.cardColor(isDark),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
-                side: const BorderSide(color: Color(0xFFF1F5F9)),
+                side: BorderSide(color: palette.dividerColor(isDark)),
               ),
             ),
           ),
@@ -313,6 +339,8 @@ class _FilterPanel extends StatelessWidget {
   final List<String> categories;
   final ValueChanged<String> onFilterChanged;
   final ValueChanged<String> onCategoryChanged;
+  final bool isDark;
+  final AppPalette palette;
 
   const _FilterPanel({
     required this.filter,
@@ -320,6 +348,8 @@ class _FilterPanel extends StatelessWidget {
     required this.categories,
     required this.onFilterChanged,
     required this.onCategoryChanged,
+    required this.isDark,
+    required this.palette,
   });
 
   @override
@@ -327,11 +357,11 @@ class _FilterPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.cardColor(isDark),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -340,10 +370,10 @@ class _FilterPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Jenis Transaksi',
             style: TextStyle(
-              color: Color(0xFF64748B),
+              color: palette.secondaryText(isDark),
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
@@ -373,10 +403,10 @@ class _FilterPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          const Text(
+          Text(
             'Kategori',
             style: TextStyle(
-              color: Color(0xFF64748B),
+              color: palette.secondaryText(isDark),
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
@@ -388,14 +418,14 @@ class _FilterPanel extends StatelessWidget {
             children: [
               _CategoryChip(
                 label: 'Semua',
-                color: const Color(0xFF64748B),
+                color: palette.secondaryText(isDark),
                 selected: selectedCategory == 'all',
                 onTap: () => onCategoryChanged('all'),
               ),
               for (final category in categories)
                 _CategoryChip(
                   label: category,
-                  color: categoryColors[category] ?? const Color(0xFF64748B),
+                  color: categoryColors[category] ?? palette.secondaryText(isDark),
                   selected: selectedCategory == category,
                   onTap: () => onCategoryChanged(category),
                 ),
@@ -483,11 +513,15 @@ class _DateGroup extends StatelessWidget {
   final String date;
   final List<Transaction> transactions;
   final ValueChanged<Transaction> onSelect;
+  final bool isDark;
+  final AppPalette palette;
 
   const _DateGroup({
     required this.date,
     required this.transactions,
     required this.onSelect,
+    required this.isDark,
+    required this.palette,
   });
 
   @override
@@ -500,29 +534,29 @@ class _DateGroup extends StatelessWidget {
             children: [
               Text(
                 formatDate(date),
-                style: const TextStyle(
-                  color: Color(0xFF64748B),
+                style: TextStyle(
+                  color: palette.secondaryText(isDark),
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+              Expanded(child: Divider(color: palette.dividerColor(isDark))),
               const SizedBox(width: 12),
               Text(
                 '${transactions.length} transaksi',
-                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                style: TextStyle(color: palette.secondaryText(isDark), fontSize: 12),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: palette.cardColor(isDark),
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
                   blurRadius: 18,
                   offset: const Offset(0, 6),
                 ),
@@ -534,11 +568,13 @@ class _DateGroup extends StatelessWidget {
                   _TransactionTile(
                     tx: transactions[i],
                     onTap: () => onSelect(transactions[i]),
+                    isDark: isDark,
+                    palette: palette,
                   ),
                   if (i < transactions.length - 1)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Divider(height: 1, color: Color(0xFFF8FAFC)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Divider(height: 1, color: palette.dividerColor(isDark)),
                     ),
                 ],
               ],
@@ -553,8 +589,15 @@ class _DateGroup extends StatelessWidget {
 class _TransactionTile extends StatelessWidget {
   final Transaction tx;
   final VoidCallback onTap;
+  final bool isDark;
+  final AppPalette palette;
 
-  const _TransactionTile({required this.tx, required this.onTap});
+  const _TransactionTile({
+    required this.tx,
+    required this.onTap,
+    required this.isDark,
+    required this.palette,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -585,8 +628,8 @@ class _TransactionTile extends StatelessWidget {
                     tx.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF1F2937),
+                    style: TextStyle(
+                      color: palette.text(isDark),
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
                     ),
@@ -616,8 +659,8 @@ class _TransactionTile extends StatelessWidget {
                       ),
                       Text(
                         formatDate(tx.date),
-                        style: const TextStyle(
-                          color: Color(0xFF94A3B8),
+                        style: TextStyle(
+                          color: palette.secondaryText(isDark),
                           fontSize: 10,
                         ),
                       ),
@@ -642,8 +685,8 @@ class _TransactionTile extends StatelessWidget {
                 ),
                 Text(
                   tx.time,
-                  style: const TextStyle(
-                    color: Color(0xFF94A3B8),
+                  style: TextStyle(
+                    color: palette.secondaryText(isDark),
                     fontSize: 10,
                   ),
                 ),
@@ -659,8 +702,15 @@ class _TransactionTile extends StatelessWidget {
 class _DetailSheet extends StatelessWidget {
   final Transaction tx;
   final BuildContext pageContext;
+  final bool isDark;
+  final AppPalette palette;
 
-  const _DetailSheet({required this.tx, required this.pageContext});
+  const _DetailSheet({
+    required this.tx,
+    required this.pageContext,
+    required this.isDark,
+    required this.palette,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -718,8 +768,8 @@ class _DetailSheet extends StatelessWidget {
                       const SizedBox(height: 5),
                       Text(
                         tx.title,
-                        style: const TextStyle(
-                          color: Color(0xFF1F2937),
+                        style: TextStyle(
+                          color: palette.text(isDark),
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
                         ),
@@ -739,9 +789,12 @@ class _DetailSheet extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  const Text(
+                  Text(
                     'Jumlah',
-                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                    style: TextStyle(
+                      color: palette.secondaryText(isDark),
+                      fontSize: 12,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -756,30 +809,45 @@ class _DetailSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            _DetailLine(label: 'Tanggal', value: formatDate(tx.date)),
-            _DetailLine(label: 'Waktu', value: '${tx.time} WIB'),
+            _DetailLine(
+              label: 'Tanggal',
+              value: formatDate(tx.date),
+              isDark: isDark,
+              palette: palette,
+            ),
+            _DetailLine(
+              label: 'Waktu',
+              value: '${tx.time} WIB',
+              isDark: isDark,
+              palette: palette,
+            ),
             _DetailLine(
               label: 'Jenis',
               value: isIncome ? 'Pemasukan' : 'Pengeluaran',
               color: typeColor,
+              isDark: isDark,
+              palette: palette,
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Keterangan',
-              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+              style: TextStyle(
+                color: palette.secondaryText(isDark),
+                fontSize: 12,
+              ),
             ),
             const SizedBox(height: 6),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
+                color: palette.cardColor(isDark),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Text(
                 tx.detail,
-                style: const TextStyle(
-                  color: Color(0xFF334155),
+                style: TextStyle(
+                  color: palette.text(isDark),
                   fontSize: 13,
                   height: 1.4,
                 ),
@@ -833,6 +901,9 @@ class _DetailSheet extends StatelessWidget {
               height: 46,
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  foregroundColor: palette.text(isDark),
+                ),
                 child: const Text('Tutup'),
               ),
             ),
@@ -891,8 +962,16 @@ class _DetailLine extends StatelessWidget {
   final String label;
   final String value;
   final Color? color;
+  final bool isDark;
+  final AppPalette palette;
 
-  const _DetailLine({required this.label, required this.value, this.color});
+  const _DetailLine({
+    required this.label,
+    required this.value,
+    this.color,
+    required this.isDark,
+    required this.palette,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -903,12 +982,15 @@ class _DetailLine extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+            style: TextStyle(
+              color: palette.secondaryText(isDark),
+              fontSize: 12,
+            ),
           ),
           Text(
             value,
             style: TextStyle(
-              color: color ?? const Color(0xFF334155),
+              color: color ?? palette.text(isDark),
               fontSize: 12,
               fontWeight: FontWeight.w800,
             ),
@@ -920,27 +1002,34 @@ class _DetailLine extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  final bool isDark;
+  final AppPalette palette;
+
+  const _EmptyState({required this.isDark, required this.palette});
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 64),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 64),
       child: Column(
         children: [
-          Icon(Icons.search_off_rounded, size: 54, color: Color(0xFFCBD5E1)),
-          SizedBox(height: 12),
+          Icon(
+            Icons.search_off_rounded,
+            size: 54,
+            color: palette.secondaryText(isDark),
+          ),
+          const SizedBox(height: 12),
           Text(
             'Tidak ada transaksi',
             style: TextStyle(
-              color: Color(0xFF64748B),
+              color: palette.secondaryText(isDark),
               fontWeight: FontWeight.w700,
             ),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
             'Coba ubah filter atau pencarian',
-            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+            style: TextStyle(color: palette.secondaryText(isDark), fontSize: 12),
           ),
         ],
       ),

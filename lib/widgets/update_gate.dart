@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/update_checker.dart';
 import '../widgets/update_dialog.dart';
 
@@ -14,6 +13,7 @@ class UpdateGate extends StatefulWidget {
 
 class _UpdateGateState extends State<UpdateGate> {
   bool _isChecking = true;
+  bool _hasShownUpdate = false;
 
   @override
   void initState() {
@@ -22,34 +22,25 @@ class _UpdateGateState extends State<UpdateGate> {
   }
 
   Future<void> _checkUpdate() async {
+    if (_hasShownUpdate) return;
+
     await Future.delayed(const Duration(milliseconds: 500));
-
-    final prefs = await SharedPreferences.getInstance();
-    final lastSkipDate = prefs.getString('update_skip_date');
-    final today = DateTime.now().toIso8601String().substring(0, 10);
-
-    if (lastSkipDate == today) {
-      if (!mounted) return;
-      setState(() {
-        _isChecking = false;
-      });
-      return;
-    }
 
     final updateInfo = await UpdateChecker.checkForUpdate();
 
     if (!mounted) return;
 
     if (updateInfo.hasUpdate) {
+      _hasShownUpdate = true;
       if (updateInfo.isForceUpdate) {
         await showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (dialogContext) => UpdateDialog(
-            updateInfo: updateInfo,
-            onDismiss: () {
-              Navigator.of(dialogContext).pop();
-            },
+          builder: (dialogContext) => PopScope(
+            canPop: false,
+            child: UpdateDialog(
+              updateInfo: updateInfo,
+            ),
           ),
         );
 
@@ -64,24 +55,34 @@ class _UpdateGateState extends State<UpdateGate> {
           await showDialog(
             context: context,
             barrierDismissible: false,
-            builder: (dialogContext) => UpdateDialog(
-              updateInfo: updateInfo,
-              onDismiss: () {},
+            builder: (dialogContext) => PopScope(
+              canPop: false,
+              child: UpdateDialog(
+                updateInfo: updateInfo,
+              ),
             ),
           );
         }
       } else {
+        bool shouldSkip = false;
         await showDialog(
           context: context,
           barrierDismissible: true,
           builder: (dialogContext) => UpdateDialog(
             updateInfo: updateInfo,
-            onDismiss: () async {
-              final p = await SharedPreferences.getInstance();
-              await p.setString('update_skip_date', today);
+            onSkip: () {
+              shouldSkip = true;
+              Navigator.of(dialogContext).pop();
             },
           ),
         );
+
+        if (shouldSkip && mounted) {
+          setState(() {
+            _isChecking = false;
+          });
+          return;
+        }
       }
     }
 

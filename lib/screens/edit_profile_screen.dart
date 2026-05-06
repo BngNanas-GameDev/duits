@@ -17,6 +17,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     with TickerProviderStateMixin {
   final _nameController = TextEditingController();
   final _avatarUrlController = TextEditingController();
+  final _emailController = TextEditingController();
 
   bool _isLoading = false;
   bool _hasLoaded = false;
@@ -57,6 +58,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   void dispose() {
     _nameController.dispose();
     _avatarUrlController.dispose();
+    _emailController.dispose();
     _shakeController.dispose();
     super.dispose();
   }
@@ -72,6 +74,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     final metaName = auth.user?.userMetadata?['name']?.toString() ?? '';
     setState(() {
       _nameController.text = metaName;
+      _emailController.text = auth.email ?? '';
     });
 
     // Try to load from profiles table
@@ -90,6 +93,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           if (response['avatar_url'] != null) {
             _avatarUrlController.text = response['avatar_url'] as String;
           }
+          _emailController.text = auth.email ?? '';
         });
       }
     } catch (e) {
@@ -145,6 +149,8 @@ class _EditProfileScreenState extends State<EditProfileScreen>
       }
 
       if (mounted) {
+        await auth.updateUserName(name);
+        if (!mounted) return;
         setState(() {
           _success = 'Profil berhasil disimpan.';
         });
@@ -170,9 +176,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    final email = auth.email ?? '-';
-    final emailController = TextEditingController(text: email);
+    context.watch<AuthProvider>();
 
     return Scaffold(
       appBar: AppBar(
@@ -199,7 +203,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                 // Email field (read-only)
                 _LabeledInput(
                   label: 'Email',
-                  controller: emailController,
+                  controller: _emailController,
                   enabled: false,
                   icon: Icons.mail_outline_rounded,
                 ),
