@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/transaction_provider.dart';
@@ -35,7 +36,12 @@ class ProfileScreen extends StatelessWidget {
             Icons.person_outline_rounded,
             'Edit Profil',
             'Ubah nama & foto profil',
-            onTap: () => Navigator.pushNamed(context, AppRoutes.editProfile),
+            onTap: () async {
+              final result = await Navigator.pushNamed(context, AppRoutes.editProfile);
+              if (result == true && context.mounted) {
+                (context.findAncestorStateOfType<_ProfileHeaderState>())?._loadAvatar();
+              }
+            },
           ),
           _MenuItem(
             Icons.credit_card_rounded,
@@ -175,8 +181,43 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-class _ProfileHeader extends StatelessWidget {
+class _ProfileHeader extends StatefulWidget {
   const _ProfileHeader();
+
+  @override
+  State<_ProfileHeader> createState() => _ProfileHeaderState();
+}
+
+class _ProfileHeaderState extends State<_ProfileHeader> {
+  String _avatarUrl = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvatar();
+  }
+
+  Future<void> _loadAvatar() async {
+    try {
+      final auth = context.read<AuthProvider>();
+      final userId = auth.userId;
+      if (userId == null) return;
+
+      final response = await Supabase.instance.client
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', userId)
+          .maybeSingle();
+
+      if (response != null && mounted) {
+        setState(() {
+          _avatarUrl = response['avatar_url']?.toString() ?? '';
+        });
+      }
+    } catch (e) {
+      debugPrint('Load avatar error: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -187,6 +228,9 @@ class _ProfileHeader extends StatelessWidget {
     final name = auth.user?.userMetadata?['name']?.toString() ?? 'Pengguna';
     final email = auth.email ?? '-';
     final gradientColors = palette.headerGradient(isDark);
+    final initials = name.isNotEmpty
+        ? name.split(' ').map((w) => w.isNotEmpty ? w[0] : '').take(2).join()
+        : '?';
 
     return Container(
       width: double.infinity,
@@ -216,11 +260,33 @@ class _ProfileHeader extends StatelessWidget {
                 width: 3,
               ),
             ),
-            child: Icon(
-              Icons.business_center_rounded,
-              color: Colors.white,
-              size: 36,
-            ),
+            child: _avatarUrl.isNotEmpty
+                ? ClipOval(
+                    child: Image.network(
+                      _avatarUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stack) => Center(
+                        child: Text(
+                          initials.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 30,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : Center(
+                    child: Text(
+                      initials.toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
           ),
           const SizedBox(height: 12),
           Text(

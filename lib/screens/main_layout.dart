@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 // --- IMPORT PROVIDERS ---
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 
 // --- IMPORT COMPONENTS ---
 import '../components/bottom_nav.dart';
@@ -81,27 +82,31 @@ class _MainLayoutState extends State<MainLayout> {
       );
     }
 
-    return Scaffold(
-      // Warna background konsisten dengan UI Kit Duits (Slate 50)
-      backgroundColor: const Color(0xFFF8FAFC),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return Scaffold(
+          // Warna background mengikuti tema aktif
+          backgroundColor: themeProvider.palette.scaffoldBackground(themeProvider.isDarkMode),
 
-      // IndexedStack: Menjaga state widget tetap hidup di background
-      body: IndexedStack(index: _currentIndex, children: _pages),
+          // IndexedStack: Menjaga state widget tetap hidup di background
+          body: IndexedStack(index: _currentIndex, children: _pages),
 
-      // Navigasi bawah kustom
-      bottomNavigationBar: BottomNav(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          // Logika tombol tengah (Add Transaction)
-          if (index == 2) {
-            _openAddTransaction();
-          } else {
-            setState(() {
-              _currentIndex = index;
-            });
-          }
-        },
-      ),
+          // Navigasi bawah kustom
+          bottomNavigationBar: BottomNav(
+            currentIndex: _currentIndex,
+            onTap: (index) {
+              // Logika tombol tengah (Add Transaction)
+              if (index == 2) {
+                _openAddTransaction();
+              } else {
+                setState(() {
+                  _currentIndex = index;
+                });
+              }
+            },
+          ),
+        );
+      },
     );
   }
 

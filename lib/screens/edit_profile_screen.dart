@@ -156,7 +156,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         });
         Timer(const Duration(seconds: 2), () {
           if (mounted) {
-            Navigator.pop(context);
+            Navigator.pop(context, true);
           }
         });
       }
@@ -189,7 +189,15 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _ProfileAvatarCard(name: _nameController.text),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _avatarUrlController,
+              builder: (context, value, child) {
+                return _ProfileAvatarCard(
+                  name: _nameController.text,
+                  avatarUrl: value.text.trim(),
+                );
+              },
+            ),
             const SizedBox(height: 20),
             _FormCard(
               children: [
@@ -257,8 +265,9 @@ class _EditProfileScreenState extends State<EditProfileScreen>
 
 class _ProfileAvatarCard extends StatelessWidget {
   final String name;
+  final String avatarUrl;
 
-  const _ProfileAvatarCard({required this.name});
+  const _ProfileAvatarCard({required this.name, this.avatarUrl = ''});
 
   @override
   Widget build(BuildContext context) {
@@ -296,16 +305,33 @@ class _ProfileAvatarCard extends StatelessWidget {
                 width: 2,
               ),
             ),
-            child: Center(
-              child: Text(
-                initials.toUpperCase(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
+            child: avatarUrl.isNotEmpty
+                ? ClipOval(
+                    child: Image.network(
+                      avatarUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stack) => Center(
+                        child: Text(
+                          initials.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : Center(
+                    child: Text(
+                      initials.toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
           ),
           const SizedBox(width: 16),
           Expanded(
