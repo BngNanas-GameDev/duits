@@ -108,6 +108,8 @@ class CoupleProvider extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   StreamSubscription<AuthState>? _authSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _debtsSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _invitationsSubscription;
   Timer? _invitationPollingTimer;
   bool _isLoading = false;
   bool _isSetup = false;
@@ -307,6 +309,7 @@ class CoupleProvider extends ChangeNotifier {
       );
       _errorMessage = null;
       _invitationPollingTimer?.cancel();
+      _subscribeToRealtime();
       notifyListeners();
     } catch (e) {
       _errorMessage = 'Gagal memuat data pasangan: $e';
@@ -405,6 +408,7 @@ class CoupleProvider extends ChangeNotifier {
       }
 
       _invitationPollingTimer?.cancel();
+      _subscribeToRealtime();
       notifyListeners();
     } catch (e) {
       _errorMessage = 'Gagal menyimpan data pasangan: $e';
@@ -429,7 +433,7 @@ class CoupleProvider extends ChangeNotifier {
 
     _setLoading(true);
     try {
-      final combinedMessage = '${myGender}|||${message}';
+      final combinedMessage = '$myGender|||$message';
       await _supabase.rpc(
         'send_couple_invitation',
         params: {'invitee_email': email, 'message': combinedMessage},
@@ -596,8 +600,70 @@ class CoupleProvider extends ChangeNotifier {
   @override
   void dispose() {
     _authSubscription?.cancel();
+    _debtsSubscription?.cancel();
+    _invitationsSubscription?.cancel();
     _invitationPollingTimer?.cancel();
     super.dispose();
+  }
+
+  void _subscribeToRealtime() {
+    _debtsSubscription?.cancel();
+    _invitationsSubscription?.cancel();
+
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null || _spaceId == null) return;
+
+    _debtsSubscription = _supabase
+        .from('couple_debts')
+        .stream(primaryKey: ['id'])
+        .eq('couple_space_id', _spaceId!)
+        .listen((rows) {
+      final entries = rows
+          .where((row) => row['deleted_at'] == null)
+          .map<DebtEntry>((row) => DebtEntry.fromSupabase(row))
+          .toList();
+
+      _partnerA = _partnerA.copyWith(
+        debts: entries.where((debt) => debt.ownerId == 'A').toList(),
+      );
+      _partnerB = _partnerB.copyWith(
+        debts: entries.where((debt) => debt.ownerId == 'B').toList(),
+      );
+      notifyListeners();
+    });
+
+    _invitationsSubscription = _supabase
+        .from('couple_invitations')
+        .stream(primaryKey: ['id'])
+        .eq('status', 'pending')
+        .listen((rows) async {
+      if (_isSetup) return;
+
+      final invitations = rows
+          .map<CoupleInvitation>((row) => CoupleInvitation.fromSupabase(row))
+          .toList();
+      final newIncoming = invitations
+          .where((invite) => invite.inviteeUserId == userId)
+          .toList();
+      final newSent = invitations
+          .where((invite) => invite.inviterUserId == userId)
+          .toList();
+
+      final hasChanges =
+          newIncoming.length != _incomingInvitations.length ||
+          newSent.length != _sentInvitations.length;
+
+      if (hasChanges) {
+        _incomingInvitations = newIncoming;
+        _sentInvitations = newSent;
+        notifyListeners();
+
+        final hadSentInvite = _sentInvitations.isNotEmpty && newSent.isEmpty;
+        if (hadSentInvite) {
+          await loadCouple();
+        }
+      }
+    });
   }
 
   void _clearState() {
@@ -612,6 +678,10 @@ class CoupleProvider extends ChangeNotifier {
     _inviteCode = null;
     _myPartnerKey = 'A';
     _myGender = null;
+    _debtsSubscription?.cancel();
+    _debtsSubscription = null;
+    _invitationsSubscription?.cancel();
+    _invitationsSubscription = null;
     _partnerA = const Partner(
       id: 'A',
       name: 'Partner A',

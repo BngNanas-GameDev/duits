@@ -27,7 +27,6 @@ class AppToggle extends StatelessWidget {
     // --- Warna Shadcn Style ---
     const Color primaryIndigo = Color(0xFF6C63FF);
     const Color textMuted = Color(0xFF64748B);
-    const Color accentBg = Color(0xFFF1F5F9); // bg-accent
     const Color borderColor = Color(0xFFE2E8F0);
 
     // --- Sizing Logic (Mapping size variants) ---

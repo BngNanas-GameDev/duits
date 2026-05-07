@@ -17,7 +17,7 @@ const List<String> expenseCategories = [
   'Lainnya',
 ];
 
-const List<String> incomeCategories = ['Gaji Masuk', 'Lainnya'];
+const List<String> incomeCategories = ['Gaji Masuk', 'Transfer', 'Lainnya'];
 
 class AddTransactionScreen extends StatefulWidget {
   const AddTransactionScreen({super.key});
@@ -1074,6 +1074,7 @@ OutlineInputBorder _inputBorder(Color color) {
 IconData _categoryIcon(String category) {
   return switch (category) {
     'Gaji Masuk' => Icons.work_rounded,
+    'Transfer' => Icons.swap_horiz_rounded,
     'Belanja' => Icons.shopping_bag_rounded,
     'Tagihan' => Icons.receipt_long_rounded,
     'Tabungan' => Icons.savings_rounded,

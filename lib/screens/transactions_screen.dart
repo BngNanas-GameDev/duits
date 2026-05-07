@@ -16,6 +16,7 @@ class TransactionsScreen extends StatefulWidget {
 class _TransactionsScreenState extends State<TransactionsScreen> {
   static const List<String> _allCategories = [
     'Gaji Masuk',
+    'Transfer',
     'Belanja',
     'Tagihan',
     'Tabungan',
@@ -1040,6 +1041,7 @@ class _EmptyState extends StatelessWidget {
 IconData _categoryIcon(String category) {
   return switch (category) {
     'Gaji Masuk' => Icons.work_rounded,
+    'Transfer' => Icons.swap_horiz_rounded,
     'Belanja' => Icons.shopping_bag_rounded,
     'Tagihan' => Icons.receipt_long_rounded,
     'Tabungan' => Icons.savings_rounded,

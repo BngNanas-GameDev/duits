@@ -71,46 +71,43 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
     final userId = auth.userId;
     if (userId == null) return;
 
-    final balances = <String, double>{};
+    try {
+      final allTransactions = await _supabase
+          .from('transactions')
+          .select('account_id, type, amount')
+          .eq('user_id', userId)
+          .filter('deleted_at', 'is', null)
+          .not('account_id', 'is', null);
 
-    for (final account in _accounts) {
-      final accountId = account['id'] as String;
-      final openingBalance =
-          (account['opening_balance'] as num?)?.toDouble() ?? 0.0;
-
-      try {
-        final incomeResult = await _supabase
-            .from('transactions')
-            .select('amount')
-            .eq('user_id', userId)
-            .eq('account_id', accountId)
-            .eq('type', 'income');
-        
-        final incomeSum = incomeResult.fold<double>(
-            0,
-            (sum, tx) => sum + ((tx['amount'] as num?)?.toDouble() ?? 0.0));
-
-        final expenseResult = await _supabase
-            .from('transactions')
-            .select('amount')
-            .eq('user_id', userId)
-            .eq('account_id', accountId)
-            .eq('type', 'expense');
-
-        final expenseSum = expenseResult.fold<double>(
-            0,
-            (sum, tx) => sum + ((tx['amount'] as num?)?.toDouble() ?? 0.0));
-
-        balances[accountId] = openingBalance + incomeSum - expenseSum;
-      } catch (e) {
-        balances[accountId] = openingBalance;
+      final accountTotals = <String, double>{};
+      for (final tx in allTransactions) {
+        final accountId = tx['account_id'] as String?;
+        if (accountId == null) continue;
+        final amount = (tx['amount'] as num?)?.toDouble() ?? 0.0;
+        final type = tx['type'] as String;
+        accountTotals[accountId] = (accountTotals[accountId] ?? 0.0) +
+            (type == 'income' ? amount : -amount);
       }
-    }
 
-    if (mounted) {
-      setState(() {
-        _balances.addAll(balances);
-      });
+      final balances = <String, double>{};
+      for (final account in _accounts) {
+        final accountId = account['id'] as String;
+        final openingBalance =
+            (account['opening_balance'] as num?)?.toDouble() ?? 0.0;
+        balances[accountId] = openingBalance + (accountTotals[accountId] ?? 0.0);
+      }
+
+      if (mounted) {
+        setState(() {
+          _balances.addAll(balances);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Gagal menghitung saldo: $e';
+        });
+      }
     }
   }
 
@@ -153,19 +150,28 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menghapus: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menghapus: $e')),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final textColor = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1F2937);
+    final subtitleColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text('Kelola Rekening'),
         centerTitle: true,
         elevation: 0,
+        backgroundColor: isDark ? const Color(0xFF0F172A) : null,
         actions: [
           IconButton(
             icon: const Icon(Icons.add_rounded),
@@ -196,7 +202,7 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                       const SizedBox(height: 12),
                       Text(
                         _error,
-                        style: const TextStyle(color: Color(0xFF64748B)),
+                        style: TextStyle(color: subtitleColor),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
@@ -232,11 +238,12 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
 
                           return Card(
                             margin: const EdgeInsets.only(bottom: 12),
+                            color: cardBg,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(24),
                             ),
                             elevation: 2,
-                            shadowColor: Colors.black.withValues(alpha: 0.06),
+                            shadowColor: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
                             child: Column(
                               children: [
                                 ListTile(
@@ -265,15 +272,16 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                                   ),
                                   title: Text(
                                     accountName,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 15,
+                                      color: textColor,
                                     ),
                                   ),
                                   subtitle: Text(
                                     _getTypeLabel(accountType),
-                                    style: const TextStyle(
-                                      color: Color(0xFF94A3B8),
+                                    style: TextStyle(
+                                      color: subtitleColor,
                                       fontSize: 12,
                                     ),
                                   ),
@@ -286,10 +294,10 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                                       Text(
                                         _formatRupiah(
                                             _balances[accountId] ?? 0.0),
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.w800,
                                           fontSize: 15,
-                                          color: Color(0xFF1F2937),
+                                          color: textColor,
                                         ),
                                       ),
                                       const SizedBox(height: 2),
@@ -299,7 +307,7 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                                                 .expand_less_rounded
                                             : Icons.chevron_right_rounded,
                                         size: 18,
-                                        color: const Color(0xFF94A3B8),
+                                        color: subtitleColor,
                                       ),
                                     ],
                                   ),
@@ -377,14 +385,18 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                     .from('accounts')
                     .update({'name': newName})
                     .eq('id', account['id'] as String);
-                if (mounted) {
+                if (ctx.mounted) {
                   Navigator.pop(ctx);
+                }
+                if (mounted) {
                   _loadAccounts();
                 }
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Gagal mengedit: $e')),
-                );
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(content: Text('Gagal mengedit: $e')),
+                  );
+                }
               }
             },
           ),

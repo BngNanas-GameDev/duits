@@ -10,18 +10,12 @@ class AppNavigationMenu extends StatefulWidget {
 }
 
 class _AppNavigationMenuState extends State<AppNavigationMenu> {
-  int? _hoveredIndex;
-
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: widget.items.asMap().entries.map((entry) {
-        return MouseRegion(
-          onEnter: (_) => setState(() => _hoveredIndex = entry.key),
-          onExit: (_) => setState(() => _hoveredIndex = null),
-          child: entry.value,
-        );
+        return entry.value;
       }).toList(),
     );
   }

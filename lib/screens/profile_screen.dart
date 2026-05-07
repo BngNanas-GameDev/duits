@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
@@ -17,10 +18,9 @@ class ProfileScreen extends StatelessWidget {
     final themeProvider = context.watch<ThemeProvider>();
     final isDark = themeProvider.isDarkMode;
     final palette = themeProvider.palette;
-    final transactions = context.watch<TransactionProvider>().transactions;
-    final savingTotal = transactions
-        .where((tx) => tx.category == 'Tabungan')
-        .fold<double>(0, (sum, tx) => sum + tx.amount);
+    final txProvider = context.watch<TransactionProvider>();
+    final transactions = txProvider.transactions;
+    final savingTotal = txProvider.totalSavings;
     final activeMonths = transactions
         .map((tx) {
           return tx.date.length >= 7 ? tx.date.substring(0, 7) : tx.date;
@@ -39,7 +39,8 @@ class ProfileScreen extends StatelessWidget {
             onTap: () async {
               final result = await Navigator.pushNamed(context, AppRoutes.editProfile);
               if (result == true && context.mounted) {
-                (context.findAncestorStateOfType<_ProfileHeaderState>())?._loadAvatar();
+                final headerState = context.findAncestorStateOfType<ProfileHeaderState>();
+                headerState?.loadAvatar();
               }
             },
           ),
@@ -111,7 +112,7 @@ class ProfileScreen extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 104),
         child: Column(
           children: [
-            _ProfileHeader(),
+            ProfileHeader(),
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -181,23 +182,23 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-class _ProfileHeader extends StatefulWidget {
-  const _ProfileHeader();
+class ProfileHeader extends StatefulWidget {
+  const ProfileHeader({super.key});
 
   @override
-  State<_ProfileHeader> createState() => _ProfileHeaderState();
+  State<ProfileHeader> createState() => ProfileHeaderState();
 }
 
-class _ProfileHeaderState extends State<_ProfileHeader> {
+class ProfileHeaderState extends State<ProfileHeader> {
   String _avatarUrl = '';
 
   @override
   void initState() {
     super.initState();
-    _loadAvatar();
+    loadAvatar();
   }
 
-  Future<void> _loadAvatar() async {
+  Future<void> loadAvatar() async {
     try {
       final auth = context.read<AuthProvider>();
       final userId = auth.userId;
@@ -262,10 +263,20 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
             ),
             child: _avatarUrl.isNotEmpty
                 ? ClipOval(
-                    child: Image.network(
-                      _avatarUrl,
+                    child: CachedNetworkImage(
+                      imageUrl: _avatarUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stack) => Center(
+                      placeholder: (context, url) => Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Center(
                         child: Text(
                           initials.toUpperCase(),
                           style: const TextStyle(

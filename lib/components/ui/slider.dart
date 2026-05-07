@@ -20,8 +20,7 @@ class AppSlider extends StatelessWidget {
   Widget build(BuildContext context) {
     // --- Warna Shadcn Style ---
     const Color primaryIndigo = Color(0xFF6C63FF);
-    const Color mutedColor = Color(0xFFF1F5F9); // bg-muted
-    const Color borderColor = Color(0xFFE2E8F0);
+    const Color mutedColor = Color(0xFFF1F5F9);
 
     return Opacity(
       opacity: isDisabled ? 0.5 : 1.0,

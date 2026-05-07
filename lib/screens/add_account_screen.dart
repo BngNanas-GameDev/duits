@@ -92,11 +92,20 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final textColor = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1F2937);
+    final subtitleColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final inputBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final inputBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text('Tambah Rekening'),
         centerTitle: true,
         elevation: 0,
+        backgroundColor: isDark ? const Color(0xFF0F172A) : null,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -174,7 +183,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
                     blurRadius: 18,
                     offset: const Offset(0, 6),
                   ),
@@ -189,22 +198,24 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: Theme.of(context).textTheme.bodySmall?.color,
+                      color: subtitleColor,
                     ),
                   ),
                   const SizedBox(height: 8),
                   TextField(
+                    style: TextStyle(color: textColor),
                     controller: _nameController,
                     decoration: InputDecoration(
                       hintText: 'cth: Dompet Utama, BCA, Dana',
-                      prefixIcon: const Icon(Icons.edit_rounded, size: 18),
+                      hintStyle: TextStyle(color: subtitleColor),
+                      prefixIcon: Icon(Icons.edit_rounded, size: 18, color: subtitleColor),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        borderSide: BorderSide(color: inputBorder),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        borderSide: BorderSide(color: inputBorder),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -214,7 +225,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                         ),
                       ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: inputBg,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 12,
@@ -228,21 +239,25 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: Theme.of(context).textTheme.bodySmall?.color,
+                      color: subtitleColor,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Container(
                     decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      color: inputBg,
+                      border: Border.all(color: inputBorder),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         isExpanded: true,
+                        dropdownColor: cardBg,
                         value: _selectedType,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         borderRadius: BorderRadius.circular(16),
+                        style: TextStyle(color: textColor, fontSize: 14),
+                        icon: Icon(Icons.arrow_drop_down_rounded, color: subtitleColor),
                         items: _typeOptions.map((option) {
                           return DropdownMenuItem<String>(
                             value: option.label,
@@ -250,7 +265,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                               children: [
                                 Icon(option.icon, size: 18, color: _getTypeColor(option.rawType)),
                                 const SizedBox(width: 12),
-                                Text(option.label),
+                                Text(option.label, style: TextStyle(color: textColor)),
                               ],
                             ),
                           );
@@ -270,11 +285,12 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: Theme.of(context).textTheme.bodySmall?.color,
+                        color: subtitleColor,
                       ),
                     ),
                     const SizedBox(height: 8),
                     TextField(
+                      style: TextStyle(color: textColor),
                       controller: _balanceController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
@@ -282,15 +298,17 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       ],
                       decoration: InputDecoration(
                         hintText: 'cth: 1.000.000',
-                        prefixIcon: const Icon(Icons.payments_rounded, size: 18),
+                        hintStyle: TextStyle(color: subtitleColor),
+                        prefixIcon: Icon(Icons.payments_rounded, size: 18, color: subtitleColor),
                         prefixText: 'Rp ',
+                        prefixStyle: TextStyle(color: subtitleColor),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          borderSide: BorderSide(color: inputBorder),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          borderSide: BorderSide(color: inputBorder),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
@@ -300,7 +318,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                           ),
                         ),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: inputBg,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 12,
@@ -315,9 +333,9 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF0F0),
+                  color: isDark ? const Color(0xFF451A1A) : const Color(0xFFFFF0F0),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFFFD6D6)),
+                  border: Border.all(color: isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFFD6D6)),
                 ),
                 child: Row(
                   children: [
@@ -327,8 +345,8 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                     Expanded(
                       child: Text(
                         _error,
-                        style: const TextStyle(
-                          color: Color(0xFFDC2626),
+                        style: TextStyle(
+                          color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFFDC2626),
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),

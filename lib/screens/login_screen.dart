@@ -37,6 +37,7 @@ class _LoginScreenState extends State<LoginScreen>
   late final AnimationController _shakeController;
   late final Animation<double> _shakeAnimation;
   late final AnimationController _spinController;
+  Timer? _pendingTimer;
 
   @override
   void initState() {
@@ -68,6 +69,7 @@ class _LoginScreenState extends State<LoginScreen>
     _passwordController.dispose();
     _shakeController.dispose();
     _spinController.dispose();
+    _pendingTimer?.cancel();
     super.dispose();
   }
 
@@ -557,7 +559,8 @@ class _LoginScreenState extends State<LoginScreen>
       _error = '';
     });
     if (nextPin.length == _maxPin) {
-      Timer(const Duration(milliseconds: 120), () => _verifyPin(nextPin));
+      _pendingTimer?.cancel();
+      _pendingTimer = Timer(const Duration(milliseconds: 120), () => _verifyPin(nextPin));
     }
   }
 
@@ -566,7 +569,8 @@ class _LoginScreenState extends State<LoginScreen>
     if (result.success) return;
     _shakeController.forward(from: 0);
     setState(() => _error = result.message ?? 'PIN salah. Coba lagi.');
-    Timer(const Duration(milliseconds: 600), () {
+    _pendingTimer?.cancel();
+    _pendingTimer = Timer(const Duration(milliseconds: 600), () {
       if (mounted) setState(() => _pin = '');
     });
   }
@@ -586,7 +590,8 @@ class _LoginScreenState extends State<LoginScreen>
       _error = '';
     });
     if (autoSubmit && _pin.length == _maxPin) {
-      Timer(const Duration(milliseconds: 120), _submitSetupPin);
+      _pendingTimer?.cancel();
+      _pendingTimer = Timer(const Duration(milliseconds: 120), _submitSetupPin);
     }
   }
 

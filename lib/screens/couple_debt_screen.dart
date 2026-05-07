@@ -1,7 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/transactions.dart';
+import '../providers/auth_provider.dart';
 import '../providers/couple_provider.dart';
 import '../providers/theme_provider.dart';
 import '../theme/palette.dart';
@@ -300,8 +303,35 @@ class _InviteScreen extends StatefulWidget {
 class _InviteScreenState extends State<_InviteScreen> {
   final _emailController = TextEditingController();
   final _messageController = TextEditingController();
+  String _avatarUrl = '';
 
-  bool get _canSubmit => _emailController.text.trim().isNotEmpty;
+  @override
+  void initState() {
+    super.initState();
+    _loadAvatar();
+  }
+
+  Future<void> _loadAvatar() async {
+    try {
+      final auth = context.read<AuthProvider>();
+      final userId = auth.userId;
+      if (userId == null) return;
+
+      final response = await Supabase.instance.client
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', userId)
+          .maybeSingle();
+
+      if (response != null && mounted) {
+        setState(() {
+          _avatarUrl = response['avatar_url']?.toString() ?? '';
+        });
+      }
+    } catch (e) {
+      debugPrint('Load avatar error: $e');
+    }
+  }
 
   @override
   void dispose() {
@@ -309,6 +339,8 @@ class _InviteScreenState extends State<_InviteScreen> {
     _messageController.dispose();
     super.dispose();
   }
+
+  bool get _canSubmit => _emailController.text.trim().isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -347,11 +379,28 @@ class _InviteScreenState extends State<_InviteScreen> {
                         width: 2,
                       ),
                     ),
-                    child: Icon(
-                      isMale ? Icons.man_rounded : Icons.woman_rounded,
-                      color: genderColor,
-                      size: 40,
-                    ),
+                    child: _avatarUrl.isNotEmpty
+                        ? ClipOval(
+                            child: CachedNetworkImage(
+                              imageUrl: _avatarUrl,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Icon(
+                                isMale ? Icons.man_rounded : Icons.woman_rounded,
+                                color: genderColor,
+                                size: 40,
+                              ),
+                              errorWidget: (context, url, error) => Icon(
+                                isMale ? Icons.man_rounded : Icons.woman_rounded,
+                                color: genderColor,
+                                size: 40,
+                              ),
+                            ),
+                          )
+                        : Icon(
+                            isMale ? Icons.man_rounded : Icons.woman_rounded,
+                            color: genderColor,
+                            size: 40,
+                          ),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -435,7 +484,7 @@ class _InviteScreenState extends State<_InviteScreen> {
                           ),
                           const SizedBox(height: 10),
                           for (final invite in couple.incomingInvitations)
-                            _InvitationCard(invite: invite, genderColor: genderColor),
+                            _InvitationCard(key: ValueKey(invite.id), invite: invite, genderColor: genderColor),
                         ],
                       ],
                     ),
@@ -524,7 +573,7 @@ class _InvitationCard extends StatelessWidget {
   final CoupleInvitation invite;
   final Color genderColor;
 
-  const _InvitationCard({required this.invite, required this.genderColor});
+  const _InvitationCard({super.key, required this.invite, required this.genderColor});
 
   @override
   Widget build(BuildContext context) {
@@ -604,8 +653,8 @@ class _Dashboard extends StatelessWidget {
     final palette = themeProvider.palette;
     final absBalance = couple.netBalance.abs();
     final isEven = couple.netBalance == 0;
-    final payer = couple.netBalance > 0 ? couple.partnerB : couple.partnerA;
-    final receiver = couple.netBalance > 0 ? couple.partnerA : couple.partnerB;
+    final payer = couple.netBalance > 0 ? couple.partnerA : couple.partnerB;
+    final receiver = couple.netBalance > 0 ? couple.partnerB : couple.partnerA;
 
     return Scaffold(
       backgroundColor: palette.scaffoldBackground(isDark),
@@ -636,7 +685,7 @@ class _Dashboard extends StatelessWidget {
                           partner: couple.partnerA,
                           total: couple.totalA,
                           accentColor: couple.getGenderColor(couple.partnerA.gender),
-                          isOwing: couple.netBalance < 0,
+                          isOwing: couple.netBalance > 0,
                           owingAmount: absBalance,
                           canAdd: couple.myPartnerKey == couple.partnerA.id,
                           isDark: isDark,
@@ -649,7 +698,7 @@ class _Dashboard extends StatelessWidget {
                           partner: couple.partnerB,
                           total: couple.totalB,
                           accentColor: couple.getGenderColor(couple.partnerB.gender),
-                          isOwing: couple.netBalance > 0,
+                          isOwing: couple.netBalance < 0,
                           owingAmount: absBalance,
                           canAdd: couple.myPartnerKey == couple.partnerB.id,
                           isDark: isDark,

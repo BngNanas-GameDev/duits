@@ -12,6 +12,7 @@ class ThemeScreen extends StatefulWidget {
 }
 
 class _ThemeScreenState extends State<ThemeScreen> {
+  // ignore: unused_field
   ThemeMode _localThemeMode = ThemeMode.light;
 
   @override

@@ -38,7 +38,6 @@ class AppBadge extends StatelessWidget {
         border = const BorderSide(color: Color(0xFFE2E8F0)); // border
         break;
       case BadgeVariant.defaultVariant:
-      default:
         bgColor = const Color(0xFF6C63FF); // bg-primary (Duits Indigo)
         textColor = Colors.white;
         break;

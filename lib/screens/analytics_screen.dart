@@ -617,6 +617,7 @@ class _RatioRow {
 IconData _categoryIcon(String category) {
   return switch (category) {
     'Gaji Masuk' => Icons.work_rounded,
+    'Transfer' => Icons.swap_horiz_rounded,
     'Belanja' => Icons.shopping_bag_rounded,
     'Tagihan' => Icons.receipt_long_rounded,
     'Tabungan' => Icons.savings_rounded,

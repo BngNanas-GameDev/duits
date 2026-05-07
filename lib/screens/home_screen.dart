@@ -473,6 +473,14 @@ class _WeeklyChart extends StatelessWidget {
     final isDark = themeProvider.isDarkMode;
     final palette = themeProvider.palette;
 
+    final maxVal = data.fold<double>(
+      0,
+      (max, d) {
+        final total = (d['income'] as double) + (d['expense'] as double);
+        return total > max ? total : max;
+      },
+    );
+
     return _Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,66 +519,103 @@ class _WeeklyChart extends StatelessWidget {
           const SizedBox(height: 18),
           SizedBox(
             height: 180,
-            child: LineChart(
-              LineChartData(
-                minY: 0,
-                gridData: FlGridData(
-                  drawVerticalLine: false,
-                  getDrawingHorizontalLine: (_) => FlLine(
-                    color: palette.dividerColor(isDark),
-                    strokeWidth: 1,
-                    dashArray: [4, 4],
+            child: RepaintBoundary(
+              child: BarChart(
+                BarChartData(
+                  barGroups: [
+                    for (int i = 0; i < data.length; i++)
+                      BarChartGroupData(
+                        x: i,
+                        barsSpace: 4,
+                        barRods: [
+                          BarChartRodData(
+                            toY: data[i]['income'] as double,
+                            color: const Color(0xFF00C48C),
+                            width: 10,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(4),
+                            ),
+                          ),
+                          BarChartRodData(
+                            toY: data[i]['expense'] as double,
+                            color: const Color(0xFFFF6B6B),
+                            width: 10,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(4),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                  maxY: maxVal == 0 ? 1000000 : maxVal * 1.15,
+                  gridData: FlGridData(
+                    drawVerticalLine: false,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: palette.dividerColor(isDark),
+                      strokeWidth: 1,
+                      dashArray: [4, 4],
+                    ),
                   ),
-                ),
-                borderData: FlBorderData(show: false),
-                titlesData: FlTitlesData(
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 34,
-                      getTitlesWidget: (value, meta) => Text(
-                        value == 0
-                            ? '0'
-                            : '${(value / 1000000).toStringAsFixed(1)}jt',
-                        style: TextStyle(
-                          color: palette.secondaryText(isDark),
-                          fontSize: 10,
-                        ),
+                  borderData: FlBorderData(show: false),
+                  titlesData: FlTitlesData(
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 28,
+                        getTitlesWidget: (value, meta) {
+                          final index = value.toInt();
+                          if (index < 0 || index >= data.length) {
+                            return const SizedBox.shrink();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              data[index]['day'] as String,
+                              style: TextStyle(
+                                color: palette.secondaryText(isDark),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index < 0 || index >= data.length) {
-                          return const SizedBox.shrink();
-                        }
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            data[index]['day'] as String,
-                            style: TextStyle(
-                              color: palette.secondaryText(isDark),
-                              fontSize: 11,
-                            ),
+                  barTouchData: BarTouchData(
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipColor: (_) => palette.cardColor(isDark),
+                      tooltipPadding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        final day = data[group.x]['day'] as String;
+                        final income = data[group.x]['income'] as double;
+                        final expense = data[group.x]['expense'] as double;
+                        final label = rodIndex == 0 ? 'Masuk' : 'Keluar';
+                        final amount = rodIndex == 0 ? income : expense;
+                        return BarTooltipItem(
+                          '$day - $label\nRp${amount.toStringAsFixed(0)}',
+                          TextStyle(
+                            color: palette.text(isDark),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
                           ),
                         );
                       },
                     ),
                   ),
                 ),
-                lineBarsData: [
-                  _line('income', const Color(0xFF00C48C)),
-                  _line('expense', const Color(0xFF6C63FF)),
-                ],
               ),
             ),
           ),
@@ -580,35 +625,10 @@ class _WeeklyChart extends StatelessWidget {
             children: [
               _LegendDot(color: Color(0xFF00C48C), label: 'Pemasukan'),
               SizedBox(width: 18),
-              _LegendDot(color: Color(0xFF6C63FF), label: 'Pengeluaran'),
+              _LegendDot(color: Color(0xFFFF6B6B), label: 'Pengeluaran'),
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  LineChartBarData _line(String key, Color color) {
-    return LineChartBarData(
-      spots: [
-        for (var i = 0; i < data.length; i++)
-          FlSpot(i.toDouble(), data[i][key] as double),
-      ],
-      isCurved: true,
-      color: color,
-      barWidth: 2.5,
-      isStrokeCapRound: true,
-      dotData: FlDotData(
-        getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-          color: color,
-          strokeWidth: 2,
-          strokeColor: Colors.white,
-          radius: 3,
-        ),
-      ),
-      belowBarData: BarAreaData(
-        show: true,
-        color: color.withValues(alpha: 0.12),
       ),
     );
   }
@@ -916,6 +936,7 @@ class _Card extends StatelessWidget {
 IconData _categoryIcon(String category) {
   return switch (category) {
     'Gaji Masuk' => Icons.work_rounded,
+    'Transfer' => Icons.swap_horiz_rounded,
     'Belanja' => Icons.shopping_bag_rounded,
     'Tagihan' => Icons.receipt_long_rounded,
     'Tabungan' => Icons.savings_rounded,

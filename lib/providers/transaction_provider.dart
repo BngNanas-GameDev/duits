@@ -14,6 +14,18 @@ class TransactionProvider extends ChangeNotifier {
   List<Transaction> _transactions = [];
   List<Map<String, dynamic>> _accounts = [];
 
+  // Cached computed values
+  double? _cachedTotalIncome;
+  double? _cachedTotalExpense;
+  double? _cachedTotalSavings;
+  double? _cachedTotalSpendingExpense;
+  double? _cachedBalance;
+  double? _cachedAccountBalanceTotal;
+  Map<String, double> _cachedAccountBalances = {};
+  List<Transaction>? _cachedSortedTransactions;
+  List<Map<String, dynamic>>? _cachedWeeklyData;
+  List<MonthlyPoint>? _cachedMonthlyData;
+
   TransactionProvider() {
     _authSubscription = _supabase.auth.onAuthStateChange.listen((_) {
       loadTransactions();
@@ -34,32 +46,52 @@ class TransactionProvider extends ChangeNotifier {
     return _accounts.first;
   }
 
-  double get totalIncome => _transactions
+  double get totalIncome =>
+      _cachedTotalIncome ??= _computeTotalIncome();
+
+  double get totalExpense =>
+      _cachedTotalExpense ??= _computeTotalExpense();
+
+  double get totalSavings =>
+      _cachedTotalSavings ??= _computeTotalSavings();
+
+  double get totalSpendingExpense =>
+      _cachedTotalSpendingExpense ??= _computeTotalSpendingExpense();
+
+  double get balance =>
+      _cachedBalance ??= totalIncome - totalSpendingExpense - totalSavings;
+
+  double _computeTotalIncome() => _transactions
       .where((tx) => tx.type == 'income')
       .fold<double>(0, (sum, tx) => sum + tx.amount);
 
-  double get totalExpense => _transactions
+  double _computeTotalExpense() => _transactions
       .where((tx) => tx.type == 'expense')
       .fold<double>(0, (sum, tx) => sum + tx.amount);
 
-  double get totalSavings => _transactions
+  double _computeTotalSavings() => _transactions
       .where((tx) => tx.category == 'Tabungan')
       .fold<double>(0, (sum, tx) => sum + tx.amount);
 
-  double get totalSpendingExpense => _transactions
+  double _computeTotalSpendingExpense() => _transactions
       .where((tx) => tx.type == 'expense' && tx.category != 'Tabungan')
       .fold<double>(0, (sum, tx) => sum + tx.amount);
-
-  double get balance => totalIncome - totalSpendingExpense - totalSavings;
 
   /// Get the account-based balance for a specific account.
   /// opening_balance + income - expense for accounts with account_id linkage.
   double getAccountBalance(String accountId) {
+    if (_cachedAccountBalances.containsKey(accountId)) {
+      return _cachedAccountBalances[accountId]!;
+    }
+
     final account = _accounts.firstWhere(
       (a) => a['id'] == accountId,
       orElse: () => {},
     );
-    if (account.isEmpty) return 0.0;
+    if (account.isEmpty) {
+      _cachedAccountBalances[accountId] = 0.0;
+      return 0.0;
+    }
 
     final openingBalance =
         (account['opening_balance'] as num?)?.toDouble() ?? 0.0;
@@ -76,11 +108,16 @@ class TransactionProvider extends ChangeNotifier {
         .where((tx) => tx.type == 'expense')
         .fold<double>(0, (sum, tx) => sum + tx.amount);
 
-    return openingBalance + income - expense;
+    final result = openingBalance + income - expense;
+    _cachedAccountBalances[accountId] = result;
+    return result;
   }
 
   /// Sum all account balances (opening_balance + income - expense per account).
-  double getAccountBalanceTotal() {
+  double getAccountBalanceTotal() =>
+      _cachedAccountBalanceTotal ??= _computeAccountBalanceTotal();
+
+  double _computeAccountBalanceTotal() {
     return _accounts.fold<double>(
       0,
       (sum, account) => sum + getAccountBalance(account['id'] as String),
@@ -88,12 +125,15 @@ class TransactionProvider extends ChangeNotifier {
   }
 
   List<Transaction> get sortedTransactions {
+    if (_cachedSortedTransactions != null) return _cachedSortedTransactions!;
     final sorted = [..._transactions]
       ..sort((a, b) => '${b.date} ${b.time}'.compareTo('${a.date} ${a.time}'));
+    _cachedSortedTransactions = sorted;
     return sorted;
   }
 
   List<Map<String, dynamic>> get weeklyData {
+    if (_cachedWeeklyData != null) return _cachedWeeklyData!;
     final now = DateTime.now();
     final start = DateTime(
       now.year,
@@ -102,7 +142,7 @@ class TransactionProvider extends ChangeNotifier {
     ).subtract(Duration(days: now.weekday - 1));
     const dayLabels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
-    return List.generate(7, (index) {
+    _cachedWeeklyData = List.generate(7, (index) {
       final date = start.add(Duration(days: index));
       final dateKey = _dateKey(date);
       final dayTransactions = _transactions.where((tx) => tx.date == dateKey);
@@ -116,15 +156,17 @@ class TransactionProvider extends ChangeNotifier {
             .fold<double>(0, (sum, tx) => sum + tx.amount),
       };
     });
+    return _cachedWeeklyData!;
   }
 
   List<MonthlyPoint> get monthlyData {
+    if (_cachedMonthlyData != null) return _cachedMonthlyData!;
     final now = DateTime.now();
     final months = List.generate(5, (index) {
       return DateTime(now.year, now.month - (4 - index), 1);
     });
 
-    return months.map((month) {
+    _cachedMonthlyData = months.map((month) {
       final monthKey =
           '${month.year}-${month.month.toString().padLeft(2, '0')}';
       final monthTransactions = _transactions.where(
@@ -140,6 +182,7 @@ class TransactionProvider extends ChangeNotifier {
             .fold<double>(0, (sum, tx) => sum + tx.amount),
       );
     }).toList();
+    return _cachedMonthlyData!;
   }
 
   Future<void> loadTransactions() async {
@@ -163,6 +206,7 @@ class TransactionProvider extends ChangeNotifier {
       _transactions = rows
           .map<Transaction>((row) => Transaction.fromSupabase(row))
           .toList();
+      _invalidateCache();
       _errorMessage = null;
       notifyListeners();
     } catch (e) {
@@ -211,6 +255,7 @@ class TransactionProvider extends ChangeNotifier {
           .single();
 
       _transactions = [Transaction.fromSupabase(row), ..._transactions];
+      _invalidateCache();
       _errorMessage = null;
       notifyListeners();
       return true;
@@ -263,6 +308,7 @@ class TransactionProvider extends ChangeNotifier {
       _transactions = _transactions
           .map((tx) => tx.id == id ? updated : tx)
           .toList();
+      _invalidateCache();
       _errorMessage = null;
       notifyListeners();
       return true;
@@ -293,6 +339,7 @@ class TransactionProvider extends ChangeNotifier {
           .eq('user_id', userId);
 
       _transactions = _transactions.where((tx) => tx.id != id).toList();
+      _invalidateCache();
       _errorMessage = null;
       notifyListeners();
       return true;
@@ -440,6 +487,19 @@ class TransactionProvider extends ChangeNotifier {
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
+  }
+
+  void _invalidateCache() {
+    _cachedTotalIncome = null;
+    _cachedTotalExpense = null;
+    _cachedTotalSavings = null;
+    _cachedTotalSpendingExpense = null;
+    _cachedBalance = null;
+    _cachedAccountBalanceTotal = null;
+    _cachedAccountBalances = {};
+    _cachedSortedTransactions = null;
+    _cachedWeeklyData = null;
+    _cachedMonthlyData = null;
   }
 
   String _dateKey(DateTime date) {

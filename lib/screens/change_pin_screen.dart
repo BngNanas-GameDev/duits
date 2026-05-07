@@ -29,6 +29,7 @@ class _ChangePinScreenState extends State<ChangePinScreen>
 
   late final AnimationController _shakeController;
   late final Animation<double> _shakeAnimation;
+  Timer? _pendingTimer;
 
   @override
   void initState() {
@@ -51,6 +52,7 @@ class _ChangePinScreenState extends State<ChangePinScreen>
   @override
   void dispose() {
     _shakeController.dispose();
+    _pendingTimer?.cancel();
     super.dispose();
   }
 
@@ -91,7 +93,8 @@ class _ChangePinScreenState extends State<ChangePinScreen>
 
     if (nextPin.length == _maxPin) {
       // Auto-verify after complete
-      Timer(const Duration(milliseconds: 200), () {
+      _pendingTimer?.cancel();
+      _pendingTimer = Timer(const Duration(milliseconds: 200), () {
         if (!mounted) return;
         switch (_step) {
           case 1:
@@ -126,7 +129,8 @@ class _ChangePinScreenState extends State<ChangePinScreen>
       setState(() {
         _error = result.message ?? 'PIN lama salah.';
       });
-      Timer(const Duration(milliseconds: 500), () {
+      _pendingTimer?.cancel();
+      _pendingTimer = Timer(const Duration(milliseconds: 500), () {
         if (mounted) {
           setState(() => _currentInput = '');
         }
@@ -149,7 +153,8 @@ class _ChangePinScreenState extends State<ChangePinScreen>
       setState(() {
         _error = 'PIN tidak cocok. Coba lagi.';
       });
-      Timer(const Duration(milliseconds: 500), () {
+      _pendingTimer?.cancel();
+      _pendingTimer = Timer(const Duration(milliseconds: 500), () {
         if (mounted) {
           setState(() => _currentInput = '');
         }

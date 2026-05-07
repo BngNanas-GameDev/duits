@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 class AppAvatar extends StatelessWidget {
@@ -21,22 +22,15 @@ class AppAvatar extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: backgroundColor ?? const Color(0xFFF1F5F9), // Warna bg-muted
+        color: backgroundColor ?? const Color(0xFFF1F5F9),
       ),
       child: ClipOval(
         child: imageUrl != null && imageUrl!.isNotEmpty
-            ? Image.network(
-                imageUrl!,
+            ? CachedNetworkImage(
+                imageUrl: imageUrl!,
                 fit: BoxFit.cover,
-                // --- AvatarImage Logic ---
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return _buildFallback();
-                },
-                // --- AvatarFallback Logic ---
-                errorBuilder: (context, error, stackTrace) {
-                  return _buildFallback();
-                },
+                placeholder: (context, url) => _buildFallback(),
+                errorWidget: (context, url, error) => _buildFallback(),
               )
             : _buildFallback(),
       ),
@@ -48,7 +42,7 @@ class AppAvatar extends StatelessWidget {
       child: Text(
         fallbackText.toUpperCase(),
         style: TextStyle(
-          color: const Color(0xFF64748B), // text-muted-foreground
+          color: const Color(0xFF64748B),
           fontSize: size * 0.4,
           fontWeight: FontWeight.w600,
         ),

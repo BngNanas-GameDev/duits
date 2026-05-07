@@ -56,6 +56,7 @@ class MonthlyPoint {
 // --- WARNA & IKON KATEGORI ---
 final Map<String, Color> categoryColors = {
   "Gaji Masuk": const Color(0xFF00C48C),
+  "Transfer": const Color(0xFF38BDF8),
   "Belanja": const Color(0xFFFF6B6B),
   "Tagihan": const Color(0xFFFFB347),
   "Tabungan": const Color(0xFF6C63FF),
@@ -67,6 +68,7 @@ final Map<String, Color> categoryColors = {
 
 final Map<String, String> categoryIcons = {
   "Gaji Masuk": "💼",
+  "Transfer": "💸",
   "Belanja": "🛍️",
   "Tagihan": "📄",
   "Tabungan": "🏦",
