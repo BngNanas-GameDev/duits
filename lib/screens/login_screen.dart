@@ -10,6 +10,8 @@ enum _LoginMode { account, choice, pin, biometric, setupPin }
 
 enum _AccountMode { signIn, signUp }
 
+enum _PinSetupPhase { create, confirm }
+
 enum _BiometricState { idle, scanning, success, fail }
 
 class LoginScreen extends StatefulWidget {
@@ -30,7 +32,9 @@ class _LoginScreenState extends State<LoginScreen>
   _LoginMode _mode = _LoginMode.account;
   _AccountMode _accountMode = _AccountMode.signIn;
   _BiometricState _biometricState = _BiometricState.idle;
+  _PinSetupPhase _pinSetupPhase = _PinSetupPhase.create;
   String _pin = '';
+  String _confirmPin = '';
   String _error = '';
   String _info = '';
 
@@ -201,22 +205,11 @@ class _LoginScreenState extends State<LoginScreen>
             label: 'Password',
             icon: Icons.lock_outline_rounded,
             obscureText: true,
-            textInputAction: TextInputAction.done,
+            textInputAction: isSignUp ? TextInputAction.next : TextInputAction.done,
           ),
           if (isSignUp) ...[
-            const SizedBox(height: 16),
-            const Text(
-              'Buat PIN 4 digit',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFFC7D2FE), fontSize: 13),
-            ),
-            const SizedBox(height: 12),
-            _PinDots(pin: _pin, maxPin: _maxPin),
             const SizedBox(height: 10),
-            _MiniNumpad(
-              onDigit: _handleSetupPinDigit,
-              onDelete: _handleSetupPinDelete,
-            ),
+            _PasswordHint(),
           ],
           const SizedBox(height: 14),
           _Message(error: _error, info: _info),
@@ -336,25 +329,30 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildSetupPinMode(AuthProvider auth) {
+    final isConfirm = _pinSetupPhase == _PinSetupPhase.confirm;
+    final currentPin = isConfirm ? _confirmPin : _pin;
+
     return Column(
       key: const ValueKey('setupPin'),
       children: [
-        const Text(
-          'Buat PIN untuk device ini',
-          style: TextStyle(
+        Text(
+          isConfirm ? 'Konfirmasi PIN' : 'Buat PIN 4 digit',
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 16,
             fontWeight: FontWeight.w900,
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'PIN dipakai setelah akun Supabase berhasil login.',
+        Text(
+          isConfirm
+              ? 'Masukkan ulang PIN yang sama untuk konfirmasi'
+              : 'PIN ini akan digunakan untuk membuka aplikasi',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Color(0xFFC7D2FE), fontSize: 13),
+          style: const TextStyle(color: Color(0xFFC7D2FE), fontSize: 13),
         ),
         const SizedBox(height: 22),
-        _PinDots(pin: _pin, maxPin: _maxPin),
+        _PinDots(pin: currentPin, maxPin: _maxPin),
         const SizedBox(height: 12),
         _Message(error: _error, info: _info),
         const SizedBox(height: 16),
@@ -466,50 +464,94 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _submitAccount(AuthProvider auth) async {
     _clearMessages();
-    final AuthResult result;
+
     if (_accountMode == _AccountMode.signUp) {
-      if (_pin.length != _maxPin) {
-        setState(() => _error = 'Buat PIN 4 digit dulu.');
+      final name = _nameController.text.trim();
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+
+      if (name.isEmpty) {
+        setState(() => _error = 'Nama wajib diisi.');
         return;
       }
-      result = await auth.signUp(
-        name: _nameController.text,
-        email: _emailController.text,
-        password: _passwordController.text,
-        pin: _pin,
-      );
-    } else {
-      result = await auth.signInWithEmail(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
-    }
+      final pwResult = _validatePassword(password);
+      if (pwResult != null) {
+        setState(() => _error = pwResult);
+        return;
+      }
 
-    if (!mounted) return;
-    if (!result.success) {
-      setState(() => _error = result.message ?? 'Autentikasi gagal.');
-      return;
-    }
-    if (result.requiresPinSetup) {
-      setState(() {
-        _mode = _LoginMode.setupPin;
-        _clearPin();
-      });
-      return;
-    }
-    if (result.message != null && !auth.isAuthenticated) {
-      setState(() {
-        _clearPin();
-        _info = result.message!;
-        if (auth.hasSupabaseSession && auth.needsPinSetup) {
+      final result = await auth.signUp(
+        name: name,
+        email: email,
+        password: password,
+      );
+
+      if (!mounted) return;
+      if (!result.success) {
+        setState(() => _error = result.message ?? 'Signup gagal.');
+        return;
+      }
+      if (result.requiresPinSetup) {
+        setState(() {
           _mode = _LoginMode.setupPin;
-        } else if (auth.hasSupabaseSession && auth.hasPin) {
-          _mode = _LoginMode.choice;
-        } else {
-          _accountMode = _AccountMode.signIn;
-        }
-      });
+          _pinSetupPhase = _PinSetupPhase.create;
+          _pin = '';
+          _confirmPin = '';
+          _error = '';
+          _info = result.message ?? 'Buat PIN 4 digit untuk akun ini.';
+        });
+        return;
+      }
+      if (result.message != null) {
+        setState(() {
+          _info = result.message!;
+          if (auth.hasSupabaseSession && auth.needsPinSetup) {
+            _mode = _LoginMode.setupPin;
+            _pinSetupPhase = _PinSetupPhase.create;
+            _pin = '';
+            _confirmPin = '';
+          }
+        });
+      }
+    } else {
+      final result = await auth.signInWithEmail(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+      if (!result.success) {
+        setState(() => _error = result.message ?? 'Autentikasi gagal.');
+        return;
+      }
+      if (result.requiresPinSetup) {
+        setState(() {
+          _mode = _LoginMode.setupPin;
+          _clearPin();
+        });
+        return;
+      }
+      if (result.message != null && !auth.isAuthenticated) {
+        setState(() {
+          _clearPin();
+          _info = result.message!;
+          if (auth.hasSupabaseSession && auth.needsPinSetup) {
+            _mode = _LoginMode.setupPin;
+          } else if (auth.hasSupabaseSession && auth.hasPin) {
+            _mode = _LoginMode.choice;
+          } else {
+            _accountMode = _AccountMode.signIn;
+          }
+        });
+      }
     }
+  }
+
+  String? _validatePassword(String password) {
+    if (password.length < 8) return 'Password minimal 8 karakter.';
+    if (!password.contains(RegExp(r'[A-Z]'))) return 'Password harus memiliki minimal 1 huruf besar.';
+    if (!password.contains(RegExp(r'[0-9]'))) return 'Password harus memiliki minimal 1 angka.';
+    return null;
   }
 
   Future<void> _openBiometricFlow(AuthProvider auth) async {
@@ -584,29 +626,96 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _handleSetupPinDigit(String digit, {bool autoSubmit = false}) {
-    if (_pin.length >= _maxPin) return;
-    setState(() {
-      _pin += digit;
-      _error = '';
-    });
-    if (autoSubmit && _pin.length == _maxPin) {
-      _pendingTimer?.cancel();
-      _pendingTimer = Timer(const Duration(milliseconds: 120), _submitSetupPin);
+    if (_mode == _LoginMode.setupPin) {
+      if (_pinSetupPhase == _PinSetupPhase.create) {
+        if (_pin.length >= _maxPin) return;
+        setState(() {
+          _pin += digit;
+          _error = '';
+        });
+        if (autoSubmit && _pin.length == _maxPin) {
+          _pendingTimer?.cancel();
+          _pendingTimer = Timer(const Duration(milliseconds: 120), _submitSetupPin);
+        }
+      } else {
+        if (_confirmPin.length >= _maxPin) return;
+        setState(() {
+          _confirmPin += digit;
+          _error = '';
+        });
+        if (autoSubmit && _confirmPin.length == _maxPin) {
+          _pendingTimer?.cancel();
+          _pendingTimer = Timer(const Duration(milliseconds: 120), _submitSetupPin);
+        }
+      }
+    } else {
+      if (_pin.length >= _maxPin) return;
+      setState(() {
+        _pin += digit;
+        _error = '';
+      });
+      if (autoSubmit && _pin.length == _maxPin) {
+        _pendingTimer?.cancel();
+        _pendingTimer = Timer(const Duration(milliseconds: 120), _submitSetupPin);
+      }
     }
   }
 
   void _handleSetupPinDelete() {
-    if (_pin.isEmpty) return;
-    setState(() {
-      _pin = _pin.substring(0, _pin.length - 1);
-      _error = '';
-    });
+    if (_mode == _LoginMode.setupPin) {
+      if (_pinSetupPhase == _PinSetupPhase.create) {
+        if (_pin.isEmpty) return;
+        setState(() {
+          _pin = _pin.substring(0, _pin.length - 1);
+          _error = '';
+        });
+      } else {
+        if (_confirmPin.isEmpty) return;
+        setState(() {
+          _confirmPin = _confirmPin.substring(0, _confirmPin.length - 1);
+          _error = '';
+        });
+      }
+    } else {
+      if (_pin.isEmpty) return;
+      setState(() {
+        _pin = _pin.substring(0, _pin.length - 1);
+        _error = '';
+      });
+    }
   }
 
   Future<void> _submitSetupPin() async {
-    final result = await context.read<AuthProvider>().createPinForCurrentUser(
-      _pin,
-    );
+    if (_mode != _LoginMode.setupPin) return;
+
+    if (_pinSetupPhase == _PinSetupPhase.create) {
+      if (_pin.length != _maxPin) {
+        setState(() => _error = 'PIN harus 4 digit.');
+        return;
+      }
+      setState(() {
+        _pinSetupPhase = _PinSetupPhase.confirm;
+        _confirmPin = '';
+        _error = '';
+        _info = 'Konfirmasi PIN Anda.';
+      });
+      return;
+    }
+
+    if (_confirmPin != _pin) {
+      _shakeController.forward(from: 0);
+      setState(() {
+        _error = 'PIN tidak cocok. Ulangi lagi.';
+        _confirmPin = '';
+      });
+      _pendingTimer?.cancel();
+      _pendingTimer = Timer(const Duration(milliseconds: 600), () {
+        if (mounted) setState(() => _confirmPin = '');
+      });
+      return;
+    }
+
+    final result = await context.read<AuthProvider>().createPinForCurrentUser(_pin);
     if (!mounted || result.success) return;
     setState(() => _error = result.message ?? 'Gagal membuat PIN.');
   }
@@ -643,6 +752,8 @@ class _LoginScreenState extends State<LoginScreen>
 
   void _clearPin() {
     _pin = '';
+    _confirmPin = '';
+    _pinSetupPhase = _PinSetupPhase.create;
     _error = '';
     _info = '';
   }
@@ -955,71 +1066,6 @@ class _Numpad extends StatelessWidget {
   }
 }
 
-class _MiniNumpad extends StatelessWidget {
-  final ValueChanged<String> onDigit;
-  final VoidCallback onDelete;
-
-  const _MiniNumpad({required this.onDigit, required this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final key in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'])
-          SizedBox(
-            width: 42,
-            height: 42,
-            child: _SmallPinButton(label: key, onTap: () => onDigit(key)),
-          ),
-        SizedBox(
-          width: 42,
-          height: 42,
-          child: _SmallPinButton(
-            icon: Icons.backspace_outlined,
-            onTap: onDelete,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SmallPinButton extends StatelessWidget {
-  final String? label;
-  final IconData? icon;
-  final VoidCallback onTap;
-
-  const _SmallPinButton({this.label, this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Center(
-          child: icon != null
-              ? Icon(icon, color: Colors.white70, size: 18)
-              : Text(
-                  label!,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-        ),
-      ),
-    );
-  }
-}
-
 class _NumpadButton extends StatelessWidget {
   final String value;
   final VoidCallback onTap;
@@ -1079,6 +1125,55 @@ class _Message extends StatelessWidget {
         fontSize: 12,
         fontWeight: FontWeight.w700,
       ),
+    );
+  }
+}
+
+class _PasswordHint extends StatelessWidget {
+  const _PasswordHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _HintRow(icon: Icons.check_circle_outline, text: 'Minimal 8 karakter'),
+          SizedBox(height: 4),
+          _HintRow(icon: Icons.check_circle_outline, text: 'Minimal 1 huruf besar (A-Z)'),
+          SizedBox(height: 4),
+          _HintRow(icon: Icons.check_circle_outline, text: 'Minimal 1 angka (0-9)'),
+        ],
+      ),
+    );
+  }
+}
+
+class _HintRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _HintRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: const Color(0xFFBBF7D0)),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: const TextStyle(
+            color: Color(0xFFC7D2FE),
+            fontSize: 11,
+          ),
+        ),
+      ],
     );
   }
 }

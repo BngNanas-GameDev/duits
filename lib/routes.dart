@@ -14,6 +14,7 @@ import 'screens/add_account_screen.dart';
 import 'screens/change_pin_screen.dart';
 import 'screens/theme_screen.dart';
 import 'screens/help_screen.dart';
+import 'screens/settings_screen.dart';
 import 'widgets/update_gate.dart';
 
 class AppRoutes {
@@ -30,6 +31,7 @@ class AppRoutes {
   static const String changePin = '/change-pin';
   static const String theme = '/theme';
   static const String help = '/help';
+  static const String settings = '/settings';
 
   static Map<String, WidgetBuilder> getRoutes() {
     return {
@@ -52,6 +54,7 @@ class AppRoutes {
       changePin: (context) => const ChangePinScreen(),
       theme: (context) => const ThemeScreen(),
       help: (context) => const HelpScreen(),
+      settings: (context) => const SettingsScreen(),
     };
   }
 }

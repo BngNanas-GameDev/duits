@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../data/transactions.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/settings_provider.dart';
 import '../theme/palette.dart';
 
 const List<String> expenseCategories = [
@@ -319,6 +320,107 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   Future<void> _handleSubmit() async {
     if (!_isFormValid) return;
     FocusScope.of(context).unfocus();
+
+    final settings = context.read<SettingsProvider>();
+    if (settings.txConfirmationEnabled) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          final themeProvider = context.read<ThemeProvider>();
+          final isDark = themeProvider.isDarkMode;
+          final palette = themeProvider.palette;
+          final typeLabel = _type == 'income' ? 'Pemasukan' : 'Pengeluaran';
+          return AlertDialog(
+            backgroundColor: palette.cardColor(isDark),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            title: Text(
+              'Konfirmasi Transaksi',
+              style: TextStyle(
+                color: palette.text(isDark),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Apakah sudah benar?',
+                  style: TextStyle(
+                    color: palette.secondaryText(isDark),
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _ConfirmationRow(
+                  label: 'Jenis',
+                  value: typeLabel,
+                  isDark: isDark,
+                  palette: palette,
+                ),
+                _ConfirmationRow(
+                  label: 'Jumlah',
+                  value: 'Rp${_amountController.text}',
+                  isDark: isDark,
+                  palette: palette,
+                ),
+                _ConfirmationRow(
+                  label: 'Kategori',
+                  value: _category,
+                  isDark: isDark,
+                  palette: palette,
+                ),
+                _ConfirmationRow(
+                  label: 'Judul',
+                  value: _titleController.text.trim(),
+                  isDark: isDark,
+                  palette: palette,
+                ),
+                if (_detailController.text.trim().isNotEmpty)
+                  _ConfirmationRow(
+                    label: 'Detail',
+                    value: _detailController.text.trim(),
+                    isDark: isDark,
+                    palette: palette,
+                  ),
+                _ConfirmationRow(
+                  label: 'Tanggal',
+                  value: _selectedDate
+                      .toIso8601String()
+                      .split('T')
+                      .first,
+                  isDark: isDark,
+                  palette: palette,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(
+                  'Batal',
+                  style: TextStyle(color: palette.secondaryText(isDark)),
+                ),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF6C63FF),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                child: const Text('Ya, Simpan'),
+              ),
+            ],
+          );
+        },
+      );
+      if (confirmed != true) return;
+      if (!mounted) return;
+    }
 
     final provider = context.read<TransactionProvider>();
     final saved = _isEditing
@@ -1044,6 +1146,53 @@ class _Label extends StatelessWidget {
         color: palette.secondaryText(isDark),
         fontSize: 12,
         fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+}
+
+class _ConfirmationRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool isDark;
+  final AppPalette palette;
+
+  const _ConfirmationRow({
+    required this.label,
+    required this.value,
+    required this.isDark,
+    required this.palette,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 56,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: palette.secondaryText(isDark),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: palette.text(isDark),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -56,6 +56,12 @@ class ProfileScreen extends StatelessWidget {
         title: 'Preferensi',
         items: [
           _MenuItem(
+            Icons.settings_outlined,
+            'Pengaturan',
+            'Popup konfirmasi & lainnya',
+            onTap: () => Navigator.pushNamed(context, AppRoutes.settings),
+          ),
+          _MenuItem(
             Icons.notifications_none_rounded,
             'Notifikasi',
             'Atur pengingat & notifikasi',

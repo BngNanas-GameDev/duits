@@ -8,6 +8,7 @@ import 'providers/auth_provider.dart';
 import 'providers/couple_provider.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/settings_provider.dart';
 
 void main() async {
   // 1. Inisialisasi wajib untuk aplikasi async
@@ -32,6 +33,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
         ChangeNotifierProvider(create: (_) => CoupleProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
       ],
       child: const DuitsApp(),
     ),

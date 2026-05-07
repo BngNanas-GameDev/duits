@@ -95,7 +95,6 @@ class AuthProvider extends ChangeNotifier {
     required String name,
     required String email,
     required String password,
-    required String pin,
   }) async {
     if (name.trim().isEmpty) {
       return _fail('Nama wajib diisi.');
@@ -103,12 +102,8 @@ class AuthProvider extends ChangeNotifier {
     if (!_isValidEmail(email)) {
       return _fail('Email tidak valid.');
     }
-    if (password.length < 6) {
-      return _fail('Password minimal 6 karakter.');
-    }
-    if (!_isValidPin(pin)) {
-      return _fail('PIN harus 4 digit angka.');
-    }
+    final pwError = _validatePassword(password);
+    if (pwError != null) return _fail(pwError);
 
     _setLoading(true);
     try {
@@ -123,29 +118,27 @@ class AuthProvider extends ChangeNotifier {
         return _fail('Signup gagal. Coba lagi.');
       }
 
-      await _savePin(signedUpUser.id, pin);
-
       if (response.session == null) {
         _user = null;
         _hasPin = false;
-        _needsPinSetup = false;
+        _needsPinSetup = true;
         return AuthResult(
           success: true,
           message:
-              'Akun dibuat. Jika Supabase meminta konfirmasi email, verifikasi dulu lalu login.',
+              'Akun berhasil dibuat. Silakan verifikasi email lalu login.',
+          requiresPinSetup: true,
         );
       }
 
       _user = response.session!.user;
       await _ensureDefaultAccount(_user!.id);
-      _hasPin = true;
-      _needsPinSetup = false;
-      if (_canUseBiometrics) {
-        await enableBiometricForCurrentUser();
-      }
-      _isAuthenticated = true;
-      notifyListeners();
-      return const AuthResult(success: true);
+      _hasPin = false;
+      _needsPinSetup = true;
+      return AuthResult(
+        success: true,
+        requiresPinSetup: true,
+        message: 'Buat PIN 4 digit untuk akun ini.',
+      );
     } on AuthException catch (e) {
       return _fail(e.message);
     } catch (e) {
@@ -437,6 +430,13 @@ class AuthProvider extends ChangeNotifier {
 
   bool _isValidEmail(String value) {
     return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim());
+  }
+
+  String? _validatePassword(String password) {
+    if (password.length < 8) return 'Password minimal 8 karakter.';
+    if (!password.contains(RegExp(r'[A-Z]'))) return 'Password harus memiliki minimal 1 huruf besar.';
+    if (!password.contains(RegExp(r'[0-9]'))) return 'Password harus memiliki minimal 1 angka.';
+    return null;
   }
 
   bool _isValidPin(String value) {
